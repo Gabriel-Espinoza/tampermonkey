@@ -101,14 +101,23 @@
         return;
       }
       var datos = extractMovimientos(tbody);
-      var rowsForCsv = datos.map(function (d) {
-        var r = {};
-        for (var k in d) r[k] = d[k];
-        r.cuota = formatCuotaDisplay(d.cuota);
-        return r;
+      if (datos.length === 0) {
+        alert('No hay movimientos en la tabla.');
+        return;
+      }
+      var normalized = toNormalizedMovimientos(datos);
+      var movimientos = Lib.buildMovimientosWithImportIds(normalized);
+      var result = await Lib.buildYNABPreviewRows(movimientos, {
+        accessToken: YNAB_ACCESS_TOKEN,
+        budgetId: YNAB_BUDGET_ID,
+        accountId: YNAB_ACCOUNT_ID
       });
-      var headers = ['fecha', 'descripcion', 'ciudad', 'codigoReferencia', 'monto', 'montoTotalPagar', 'cuota', 'valorCuota'];
-      var csv = Lib.toCSV(rowsForCsv, headers);
+      if (result.error) {
+        alert('Error al obtener datos de YNAB: ' + result.error);
+        return;
+      }
+      var headers = ['fecha', 'payee', 'monto', 'memo', 'import_id', 'accion', 'flag_color', 'marcar'];
+      var csv = Lib.toCSV(result.rows, headers);
       var dateStr = new Date().toISOString().slice(0, 10);
       Lib.downloadCSV(csv, 'movimientos-itau-tarjeta-facturado-' + dateStr + '.csv');
     }

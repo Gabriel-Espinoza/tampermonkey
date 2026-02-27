@@ -277,6 +277,83 @@
   }
 
   /**
+   * Build CSV-ready preview rows reflecting what a YNAB sync would do.
+   * Calls the YNAB API to compare bank movements against existing transactions.
+   * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion, optional memo
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix? }
+   * @returns {Promise<{rows: Array<Object>, error: string|null}>}
+   */
+  function buildYNABPreviewRows(movimientos, config) {
+    var accessToken = config.accessToken;
+    var budgetId = config.budgetId;
+    var accountId = config.accountId;
+    var memoSuffix = config.memoSuffix != null ? config.memoSuffix : ' [No aparece en extracto Itaú]';
+
+    if (String(accessToken).indexOf('insert') !== -1 || String(budgetId).indexOf('insert') !== -1 || String(accountId).indexOf('insert') !== -1) {
+      return Promise.resolve({ rows: [], error: 'Configura YNAB_ACCESS_TOKEN, YNAB_BUDGET_ID y YNAB_ACCOUNT_ID al inicio del script.' });
+    }
+
+    var fechas = movimientos.map(function (m) { return m.dateNorm; }).filter(Boolean);
+    if (fechas.length === 0) return Promise.resolve({ rows: [], error: 'No se pudieron normalizar fechas.' });
+    var sinceDate = fechas.reduce(function (a, b) { return a < b ? a : b; });
+    var untilDate = fechas.reduce(function (a, b) { return a > b ? a : b; });
+
+    return getYNABTransactions(accessToken, budgetId, accountId, sinceDate, untilDate)
+      .then(function (r) {
+        if (r.error) return { rows: [], error: r.error };
+        var ynabTx = r.transactions;
+        var rows = [];
+
+        var existingByImportId = {};
+        for (var t = 0; t < ynabTx.length; t++) {
+          var tx = ynabTx[t];
+          if (tx.import_id) existingByImportId[tx.import_id] = tx;
+        }
+
+        var bankImportIds = new Set();
+        var bankKeys = new Set();
+        for (var i = 0; i < movimientos.length; i++) {
+          var m = movimientos[i];
+          bankImportIds.add(m.import_id);
+          bankKeys.add(m.dateNorm + ':' + m.amountMilli);
+          var payee = (m.movimientos != null ? m.movimientos : m.descripcion) || '(sin descripción)';
+          var matched = existingByImportId[m.import_id] || null;
+          rows.push({
+            fecha: m.dateNorm,
+            payee: payee,
+            monto: m.amountMilli,
+            memo: m.memo || '',
+            import_id: m.import_id,
+            accion: matched ? 'ya existe' : 'crear',
+            flag_color: matched ? (matched.flag_color || '') : '',
+            marcar: ''
+          });
+        }
+
+        var soloEnYNAB = ynabTx.filter(function (t) {
+          if (t.import_id) return !bankImportIds.has(t.import_id);
+          var key = t.date + ':' + t.amount;
+          return !bankKeys.has(key);
+        });
+        for (var j = 0; j < soloEnYNAB.length; j++) {
+          var s = soloEnYNAB[j];
+          rows.push({
+            fecha: s.date,
+            payee: s.payee_name || '',
+            monto: s.amount,
+            memo: s.memo || '',
+            import_id: s.import_id || '',
+            accion: 'marcar',
+            flag_color: s.flag_color || '',
+            marcar: memoSuffix.trim()
+          });
+        }
+
+        return { rows: rows, error: null };
+      });
+  }
+
+  /**
    * Inject buttons into one or more containers. Each container: { selector, dataId, linkHtml, linkClass }.
    * @param {Array<{ selector: string, dataId: string, linkHtml: string, linkClass: string }>} containers
    * @param {Function} onClick
@@ -315,6 +392,7 @@
     createYNABTransaction: createYNABTransaction,
     updateYNABTransaction: updateYNABTransaction,
     runSyncYNAB: runSyncYNAB,
+    buildYNABPreviewRows: buildYNABPreviewRows,
     injectButton: injectButton
   };
 

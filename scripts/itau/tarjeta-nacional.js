@@ -85,8 +85,23 @@
         return;
       }
       var datos = extractMovimientos(tbody);
-      var headers = ['fecha', 'fechaPosteo', 'descripcion', 'ciudad', 'monto'];
-      var csv = Lib.toCSV(datos, headers);
+      if (datos.length === 0) {
+        alert('No hay movimientos en la tabla.');
+        return;
+      }
+      var normalized = toNormalizedMovimientos(datos);
+      var movimientos = Lib.buildMovimientosWithImportIds(normalized);
+      var result = await Lib.buildYNABPreviewRows(movimientos, {
+        accessToken: YNAB_ACCESS_TOKEN,
+        budgetId: YNAB_BUDGET_ID,
+        accountId: YNAB_ACCOUNT_ID
+      });
+      if (result.error) {
+        alert('Error al obtener datos de YNAB: ' + result.error);
+        return;
+      }
+      var headers = ['fecha', 'payee', 'monto', 'memo', 'import_id', 'accion', 'flag_color', 'marcar'];
+      var csv = Lib.toCSV(result.rows, headers);
       var dateStr = new Date().toISOString().slice(0, 10);
       Lib.downloadCSV(csv, 'movimientos-itau-tarjeta-pesos-' + dateStr + '.csv');
     }
