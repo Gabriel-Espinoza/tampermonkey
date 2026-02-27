@@ -19,6 +19,7 @@ tampermonkey/
 │   └── itau/
 │       ├── cuenta-corriente.js        # Módulo público (GitHub Pages)
 │       ├── tarjeta-nacional.js
+│       ├── tarjeta-nacional-facturado.js   # Estado de cuenta facturado (cuenta nacional)
 │       └── tarjeta-internacional.js
 ├── loaders/                           # Privado/local (ignorado por git)
 │   └── unified.loader.user.js        # Loader unificado (template)
@@ -185,6 +186,7 @@ Si necesitas crearla para mantenimiento de selectores:
   - **Cuenta corriente** (saldos) → `dom examples/itau_dom.html`
   - **Tarjeta crédito - compras pesos** → `dom examples/itau_creditcard_nacional_dom.html`
   - **Tarjeta crédito - compras dólares** → `dom examples/itau_creditcard_inter_dom.html`
+  - **Tarjeta crédito - estado de cuenta facturado (cuenta nacional)** → `dom examples/itau_creditcard_facturado_nacional.html`
 
 ## Notas de mantenimiento
 

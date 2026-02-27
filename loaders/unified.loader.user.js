@@ -6,10 +6,12 @@
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/cuentas/cuenta-corriente/saldos/*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-pesos*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-en-dolares*
+// @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/cuenta-nacional*
 // @grant        none
 // @require      https://gabriel-espinoza.github.io/tampermonkey/shared/lib.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/cuenta-corriente.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-nacional.js
+// @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-nacional-facturado.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-internacional.js
 // ==/UserScript==
 
@@ -29,9 +31,10 @@
   };
 
   const ROUTES = [
-    { pattern: /cuenta-corriente\/saldos/, module: 'ItauCuentaCorriente',      bank: 'itau', account: 'cc' },
-    { pattern: /compras-pesos/,            module: 'ItauTarjetaNacional',      bank: 'itau', account: 'nacional' },
-    { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional', bank: 'itau', account: 'internacional' }
+    { pattern: /cuenta-corriente\/saldos/, module: 'ItauCuentaCorriente',           bank: 'itau', account: 'cc' },
+    { pattern: /cuenta-nacional/,          module: 'ItauTarjetaNacionalFacturado',  bank: 'itau', account: 'nacional' },
+    { pattern: /compras-pesos/,            module: 'ItauTarjetaNacional',           bank: 'itau', account: 'nacional' },
+    { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional',      bank: 'itau', account: 'internacional' }
   ];
 
   var url = window.location.href;
