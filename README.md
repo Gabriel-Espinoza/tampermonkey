@@ -1,4 +1,4 @@
-# Itaú Chile + YNAB (Tampermonkey con lógica pública en GitHub Pages)
+# YNAB Syncer with Tampermonkey
 
 Este proyecto separa:
 
@@ -14,60 +14,61 @@ tampermonkey/
 ├── README.md
 ├── .gitignore
 ├── shared/
-│   └── lib.js                     # Librería compartida (GitHub Pages)
+│   └── lib.js                         # Librería compartida (GitHub Pages)
 ├── scripts/
 │   └── itau/
-│       ├── cuenta-corriente.js    # Módulo público (GitHub Pages)
+│       ├── cuenta-corriente.js        # Módulo público (GitHub Pages)
 │       ├── tarjeta-nacional.js
 │       └── tarjeta-internacional.js
-├── loaders/                       # Privado/local (ignorado por git)
-│   ├── itau-cuenta-corriente.loader.user.js
-│   ├── itau-tarjeta-nacional.loader.user.js
-│   └── itau-tarjeta-internacional.loader.user.js
-└── dom examples/                  # Ignorado por git (ver abajo)
+├── loaders/                           # Privado/local (ignorado por git)
+│   └── unified.loader.user.js        # Loader unificado (template)
+└── dom examples/                      # Ignorado por git (ver abajo)
     ├── itau_dom.html
     ├── itau_creditcard_nacional_dom.html
     └── itau_creditcard_inter_dom.html
 ```
 
-## Cómo funciona ahora
+## Cómo funciona
 
-1. Tampermonkey ejecuta un **loader privado**.
-2. El loader carga con `@require` la librería y el módulo desde GitHub Pages.
-3. El loader llama `init({ accessToken, budgetId, accountId })`.
-4. Toda la lógica se ejecuta en el módulo público, pero las credenciales nunca quedan en git.
+Un único loader de Tampermonkey cubre todas las cuentas de un banco. El flujo es:
 
-## Publicar en GitHub Pages
+1. Tampermonkey detecta que estás en una URL de Itaú y ejecuta el **loader unificado**.
+2. El loader carga con `@require` la librería compartida y los 3 módulos de Itaú desde GitHub Pages.
+3. Según la URL actual, el loader determina qué módulo inicializar y le pasa las credenciales correspondientes desde un bloque `CONFIG` centralizado.
+4. El módulo público extrae movimientos del DOM, ofrece descarga CSV y sincroniza con YNAB.
 
-1. Crea un repositorio remoto y sube este proyecto.
-2. En GitHub, ve a **Settings > Pages**.
-3. En *Build and deployment*, selecciona:
-  - **Source:** Deploy from a branch
-  - **Branch:** `main` (o la rama principal) y carpeta `/ (root)`
-4. Guarda y espera la URL final:
-  - `https://<usuario>.github.io/<repo>/`
+```text
+┌─────────────────────────────────────────────────────┐
+│  Tampermonkey (local, nunca se publica)              │
+│                                                      │
+│  unified.loader.user.js                              │
+│  ┌────────────────────────────────────────────────┐  │
+│  │ CONFIG = {                                     │  │
+│  │   accessToken, budgetId,                       │  │
+│  │   accounts: { itau: { cc, nacional, inter } }  │  │
+│  │ }                                              │  │
+│  └──────────────────┬─────────────────────────────┘  │
+│                     │ según URL                      │
+│         ┌───────────┼───────────┐                    │
+│         ▼           ▼           ▼                    │
+│     cuenta-    tarjeta-    tarjeta-                   │
+│     corriente  nacional    internacional             │
+│         │           │           │                    │
+└─────────┼───────────┼───────────┼────────────────────┘
+          │  @require │           │
+          ▼           ▼           ▼
+    ┌─────────────────────────────────┐
+    │  GitHub Pages (público)         │
+    │  shared/lib.js                  │
+    │  scripts/itau/*.js              │
+    └─────────────────────────────────┘
+```
 
-Con eso quedarán disponibles:
+## Instalación
 
-- `https://<usuario>.github.io/<repo>/shared/lib.js`
-- `https://<usuario>.github.io/<repo>/scripts/itau/cuenta-corriente.js`
-- `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-nacional.js`
-- `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-internacional.js`
+### 1. Obtener los tokens de YNAB
 
-## Instalar loaders privados (Tampermonkey)
-
-Edita cada archivo en `loaders/` y reemplaza:
-
-- URL `@require` con `<usuario>` y `<repo>`
-- `accessToken`, `budgetId`, `accountId` con tus datos de YNAB
-
-Luego instala cada loader en Tampermonkey (copiar/pegar o importar archivo):
-
-- `loaders/itau-cuenta-corriente.loader.user.js`
-- `loaders/itau-tarjeta-nacional.loader.user.js`
-- `loaders/itau-tarjeta-internacional.loader.user.js`
-
-## Configuración YNAB
+Necesitas 3 datos de tu cuenta YNAB:
 
 
 | Variable      | Descripción               | Dónde obtenerla                                                       |
@@ -77,7 +78,84 @@ Luego instala cada loader en Tampermonkey (copiar/pegar o importar archivo):
 | `accountId`   | UUID de la cuenta destino | `GET https://api.ynab.com/v1/budgets/{budget_id}/accounts`            |
 
 
-Puedes usar un `accountId` distinto para cada loader.
+Necesitas un `accountId` por cada tipo de cuenta (cuenta corriente, tarjeta nacional, tarjeta internacional).
+
+### 2. Configurar el loader
+
+1. Abre `loaders/unified.loader.user.js`.
+2. Reemplaza los valores en el bloque `CONFIG` con tus datos:
+
+```javascript
+const CONFIG = {
+  accessToken: '<insert ynab token here>',
+  budgetId:    '<insert budget id here>',
+  accounts: {
+    itau: {
+      cc:            '<insert account id here>',
+      nacional:      '<insert account id here>',
+      internacional: '<insert account id here>'
+    }
+  }
+};
+```
+
+Las URLs `@require` ya apuntan a GitHub Pages y no necesitan cambios.
+
+### 3. Instalar en Tampermonkey
+
+1. Abre Tampermonkey en tu navegador.
+2. Crea un nuevo script (pestaña "+").
+3. Borra el contenido por defecto y pega todo el contenido de `unified.loader.user.js` (ya con tus tokens).
+4. Guarda (Ctrl+S / Cmd+S).
+
+Eso es todo. El script se activará automáticamente al visitar cualquiera de las 3 páginas de Itaú.
+
+### Cambiar entre test y prod
+
+Solo necesitas actualizar `budgetId` y los `accountId` en el bloque `CONFIG` con los valores del entorno que quieras usar.
+
+## Agregar un nuevo banco
+
+El loader está diseñado para ser extensible. Para agregar soporte a otro banco:
+
+1. Agrega los `accountId` del nuevo banco en `CONFIG.accounts`:
+
+```javascript
+accounts: {
+  itau: { /* ... */ },
+  brou: {
+    cc:     '<account id>',
+    ahorro: '<account id>'
+  }
+}
+```
+
+1. Agrega las reglas de routing en el array `ROUTES`:
+
+```javascript
+{ pattern: /brou\.com.*cuenta-corriente/, module: 'BrouCuentaCorriente', bank: 'brou', account: 'cc' }
+```
+
+1. Agrega las directivas `@match` y `@require` en el header del script para las URLs y módulos del nuevo banco.
+
+## Publicar en GitHub Pages
+
+Si haces un fork o creas tu propio repo:
+
+1. En GitHub, ve a **Settings > Pages**.
+2. En *Build and deployment*, selecciona:
+  - **Source:** Deploy from a branch
+  - **Branch:** `main` y carpeta `/ (root)`
+3. Guarda y espera la URL final: `https://<usuario>.github.io/<repo>/`
+
+Con eso quedarán disponibles:
+
+- `https://<usuario>.github.io/<repo>/shared/lib.js`
+- `https://<usuario>.github.io/<repo>/scripts/itau/cuenta-corriente.js`
+- `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-nacional.js`
+- `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-internacional.js`
+
+Si usas tu propio fork, actualiza las URLs `@require` en el loader.
 
 ## Actualizar lógica pública
 
@@ -86,29 +164,27 @@ Puedes usar un `accountId` distinto para cada loader.
 3. GitHub Pages publica automáticamente la nueva versión.
 4. Tampermonkey actualizará los `@require` según su intervalo de actualización.
 
-## Cache de Tampermonkey
+### Cache de Tampermonkey
 
-- `@require` usa cache.
-- Si necesitas forzar actualización inmediata:
-  - Reinstala/actualiza el script, o
-  - Añade query string en `@require` (por ejemplo `...?v=2`).
+`@require` usa cache. Si necesitas forzar actualización inmediata:
+
+- Reinstala/actualiza el script, o
+- Añade query string en `@require` (por ejemplo `...?v=2`).
 
 ## Carpeta `dom examples/` (ignorada por git)
 
-Esta carpeta contiene capturas HTML de las páginas de Itaú Chile y se usa como referencia para mantener los selectores DOM cuando el banco cambia su interfaz. Está ignorada por git porque contiene estructura propietaria del sitio del banco.
+Contiene capturas HTML de las páginas de Itaú Chile, usadas como referencia para mantener los selectores DOM cuando el banco cambia su interfaz. Está ignorada por git porque contiene estructura propietaria del sitio del banco.
 
 Si necesitas crearla para mantenimiento de selectores:
 
 1. Crea la carpeta:
-   ```bash
+  ```bash
    mkdir -p "dom examples"
-   ```
+  ```
 2. Navega a cada página de Itaú en el navegador, abre DevTools (F12), copia el HTML del contenedor de la tabla de movimientos y guárdalo:
-   - **Cuenta corriente** (saldos) → `dom examples/itau_dom.html`
-   - **Tarjeta crédito - compras pesos** → `dom examples/itau_creditcard_nacional_dom.html`
-   - **Tarjeta crédito - compras dólares** → `dom examples/itau_creditcard_inter_dom.html`
-
-Estos archivos nunca se suben al repo.
+  - **Cuenta corriente** (saldos) → `dom examples/itau_dom.html`
+  - **Tarjeta crédito - compras pesos** → `dom examples/itau_creditcard_nacional_dom.html`
+  - **Tarjeta crédito - compras dólares** → `dom examples/itau_creditcard_inter_dom.html`
 
 ## Notas de mantenimiento
 

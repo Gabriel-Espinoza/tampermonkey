@@ -1,1 +1,3 @@
 dom examples/
+loaders/*.gabo.*
+loaders/tokens.jsonc
