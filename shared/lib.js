@@ -290,8 +290,9 @@
    * Build CSV-ready preview rows reflecting what a YNAB sync would do.
    * Calls the YNAB API to compare bank movements against existing transactions.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion, optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, skipReconciled? }
    *   skipMarkNotInBank: if true, omit "marcar" rows from preview (use for paginated tables)
+   *   skipReconciled: if true, ignore reconciled YNAB transactions when building "marcar" rows
    * @returns {Promise<{rows: Array<Object>, error: string|null}>}
    */
   function buildYNABPreviewRows(movimientos, config) {
@@ -343,6 +344,7 @@
 
         if (!config.skipMarkNotInBank) {
           var soloEnYNAB = ynabTx.filter(function (t) {
+            if (config.skipReconciled && t.cleared === 'reconciled') return false;
             if (t.import_id) return !bankImportIds.has(t.import_id);
             var key = t.date + ':' + t.amount;
             return !bankKeys.has(key);

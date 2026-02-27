@@ -229,7 +229,7 @@ Cuando una tabla está paginada, el DOM solo muestra una página a la vez. Si se
 
 Para evitar esto, los módulos con tablas paginadas pasan `skipMarkNotInBank: true` en el config de `runSyncYNAB` y `buildYNABPreviewRows`. Esto desactiva el paso de marcar transacciones que solo están en YNAB, limitando la sincronización a **solo crear** transacciones nuevas.
 
-El módulo `tarjeta-nacional-facturado` no pasa esta opción porque su tabla muestra todas las transacciones sin paginación, por lo que la comparación inversa es confiable.
+El módulo `tarjeta-nacional-facturado` no pasa esta opción porque su tabla muestra todas las transacciones sin paginación, por lo que la comparación inversa es confiable. Sin embargo, usa `skipReconciled: true` para excluir de las filas "marcar" las transacciones que ya están conciliadas (*reconciled*) en YNAB, ya que esas transacciones ya fueron verificadas y no necesitan revisión.
 
 ## Notas de mantenimiento
 
