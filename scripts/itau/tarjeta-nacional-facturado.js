@@ -75,15 +75,21 @@
       return datos;
     }
 
+    function formatCuotaDisplay(cuota) {
+      return (cuota === '01/1') ? '' : 'cuota ' + cuota;
+    }
+
     function toNormalizedMovimientos(datos) {
       var out = [];
       for (var i = 0; i < datos.length; i++) {
         var d = datos[i];
-        out.push({
+        var item = {
           fecha: d.fecha,
           movimientos: d.descripcion,
           amountMilli: Lib.parseMilliunits(d.monto, true)
-        });
+        };
+        if (d.cuota && d.cuota !== '01/1') item.memo = 'cuota ' + d.cuota;
+        out.push(item);
       }
       return out;
     }
@@ -95,8 +101,14 @@
         return;
       }
       var datos = extractMovimientos(tbody);
+      var rowsForCsv = datos.map(function (d) {
+        var r = {};
+        for (var k in d) r[k] = d[k];
+        r.cuota = formatCuotaDisplay(d.cuota);
+        return r;
+      });
       var headers = ['fecha', 'descripcion', 'ciudad', 'codigoReferencia', 'monto', 'montoTotalPagar', 'cuota', 'valorCuota'];
-      var csv = Lib.toCSV(datos, headers);
+      var csv = Lib.toCSV(rowsForCsv, headers);
       var dateStr = new Date().toISOString().slice(0, 10);
       Lib.downloadCSV(csv, 'movimientos-itau-tarjeta-facturado-' + dateStr + '.csv');
     }
