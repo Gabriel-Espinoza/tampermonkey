@@ -107,7 +107,8 @@
       var result = await Lib.buildYNABPreviewRows(movimientos, {
         accessToken: YNAB_ACCESS_TOKEN,
         budgetId: YNAB_BUDGET_ID,
-        accountId: YNAB_ACCOUNT_ID
+        accountId: YNAB_ACCOUNT_ID,
+        skipMarkNotInBank: true
       });
       if (result.error) {
         alert('Error al obtener datos de YNAB: ' + result.error);
@@ -144,7 +145,8 @@
       await Lib.runSyncYNAB(movimientos, {
         accessToken: YNAB_ACCESS_TOKEN,
         budgetId: YNAB_BUDGET_ID,
-        accountId: YNAB_ACCOUNT_ID
+        accountId: YNAB_ACCOUNT_ID,
+        skipMarkNotInBank: true
       });
     }
 

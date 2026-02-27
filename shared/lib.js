@@ -188,7 +188,8 @@
   /**
    * Run YNAB sync: create missing transactions, mark "only in YNAB" with flag and memo suffix.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion (payee), optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix? } memoSuffix defaults to ' [No aparece en extracto Itaú]'
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank? }
+   *   skipMarkNotInBank: if true, skip flagging YNAB transactions not found in bank data (use for paginated tables where DOM shows partial data)
    * @returns {Promise<void>} shows alert with result
    */
   function runSyncYNAB(movimientos, config) {
@@ -248,6 +249,13 @@
       });
 
       return Promise.all(createPromises).then(function () {
+        if (config.skipMarkNotInBank) {
+          var msg = 'Listo. Creadas en YNAB: ' + created + '.';
+          if (createErrors.length) msg += ' Errores al crear: ' + createErrors.slice(0, 3).join('; ');
+          alert(msg);
+          return;
+        }
+
         var bankImportIds = new Set(movimientos.map(function (m) { return m.import_id; }));
         var bankKeys = new Set(movimientos.map(function (m) { return m.dateNorm + ':' + m.amountMilli; }));
         var soloEnYNAB = ynabTx.filter(function (t) {
@@ -280,7 +288,8 @@
    * Build CSV-ready preview rows reflecting what a YNAB sync would do.
    * Calls the YNAB API to compare bank movements against existing transactions.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion, optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank? }
+   *   skipMarkNotInBank: if true, omit "marcar" rows from preview (use for paginated tables)
    * @returns {Promise<{rows: Array<Object>, error: string|null}>}
    */
   function buildYNABPreviewRows(movimientos, config) {
@@ -330,23 +339,25 @@
           });
         }
 
-        var soloEnYNAB = ynabTx.filter(function (t) {
-          if (t.import_id) return !bankImportIds.has(t.import_id);
-          var key = t.date + ':' + t.amount;
-          return !bankKeys.has(key);
-        });
-        for (var j = 0; j < soloEnYNAB.length; j++) {
-          var s = soloEnYNAB[j];
-          rows.push({
-            fecha: s.date,
-            payee: s.payee_name || '',
-            monto: s.amount,
-            memo: s.memo || '',
-            import_id: s.import_id || '',
-            accion: 'marcar',
-            flag_color: s.flag_color || '',
-            marcar: memoSuffix.trim()
+        if (!config.skipMarkNotInBank) {
+          var soloEnYNAB = ynabTx.filter(function (t) {
+            if (t.import_id) return !bankImportIds.has(t.import_id);
+            var key = t.date + ':' + t.amount;
+            return !bankKeys.has(key);
           });
+          for (var j = 0; j < soloEnYNAB.length; j++) {
+            var s = soloEnYNAB[j];
+            rows.push({
+              fecha: s.date,
+              payee: s.payee_name || '',
+              monto: s.amount,
+              memo: s.memo || '',
+              import_id: s.import_id || '',
+              accion: 'marcar',
+              flag_color: s.flag_color || '',
+              marcar: memoSuffix.trim()
+            });
+          }
         }
 
         return { rows: rows, error: null };
