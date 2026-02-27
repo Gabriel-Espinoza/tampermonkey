@@ -281,6 +281,8 @@
           alert(msg);
         });
       });
+    }).catch(function (err) {
+      alert('Error de red al contactar YNAB: ' + (err.message || String(err)));
     });
   }
 
@@ -361,6 +363,9 @@
         }
 
         return { rows: rows, error: null };
+      })
+      .catch(function (err) {
+        return { rows: [], error: 'Error de red: ' + (err.message || String(err)) };
       });
   }
 
