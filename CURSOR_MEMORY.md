@@ -17,3 +17,10 @@
 - Config options flow from the module script → `buildYNABPreviewRows` / `runSyncYNAB` in lib.js.
 - `skipMarkNotInBank: true` is used for paginated tables (can't reliably detect "not in bank" from partial DOM).
 - `skipReconciled: true` is used for facturado (non-paginated) to avoid flagging already-verified transactions.
+
+## Matching Logic (import_id vs date:amount fallback)
+
+- YNAB transactions created via API or file import have `import_id` (e.g. `YNAB:-50000000:2026-01-23:1`).
+- Manually entered YNAB transactions do NOT have `import_id`.
+- Both `buildYNABPreviewRows` and `runSyncYNAB` must match by `import_id` first, then fall back to `date:amount` key for YNAB transactions without `import_id`.
+- Fallback matching must track occurrence counts to handle duplicate date:amount pairs correctly (e.g. two purchases at the same store on the same day for the same amount).

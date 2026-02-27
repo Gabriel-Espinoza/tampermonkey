@@ -209,7 +209,7 @@ El botón "Descargar CSV" genera un archivo orientado a diagnosticar la sincroni
 **Tipos de filas:**
 
 1. **`crear`** — Transacción del banco que no existe en YNAB. Se crearía al sincronizar.
-2. **`ya existe`** — Transacción del banco que ya está en YNAB (match por `import_id`). Se saltaría.
+2. **`ya existe`** — Transacción del banco que ya está en YNAB (match por `import_id`, o por `fecha:monto` para transacciones ingresadas manualmente). Se saltaría.
 3. **`marcar`** — Transacción que existe en YNAB pero no aparece en el extracto bancario. Se marcaría con flag naranja y memo suffix. Solo aplica en tablas no paginadas (ver sección siguiente).
 
 > La descarga del CSV requiere credenciales YNAB configuradas (llama a la API para comparar). Si la tarjeta internacional está involucrada, también pedirá la tasa de conversión USD → CLP.

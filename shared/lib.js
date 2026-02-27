@@ -227,7 +227,25 @@
         aCrear = movimientos.filter(validMovement);
       } else {
         var existingImportIds = new Set(ynabTx.map(function (t) { return t.import_id; }).filter(Boolean));
-        aCrear = movimientos.filter(function (m) { return validMovement(m) && !existingImportIds.has(m.import_id); });
+        var ynabKeyCount = {};
+        for (var ti = 0; ti < ynabTx.length; ti++) {
+          if (!ynabTx[ti].import_id) {
+            var tk = ynabTx[ti].date + ':' + ynabTx[ti].amount;
+            ynabKeyCount[tk] = (ynabKeyCount[tk] || 0) + 1;
+          }
+        }
+        var syncFallbackUsed = {};
+        aCrear = movimientos.filter(function (m) {
+          if (!validMovement(m)) return false;
+          if (existingImportIds.has(m.import_id)) return false;
+          var fk = m.dateNorm + ':' + m.amountMilli;
+          var avail = (ynabKeyCount[fk] || 0) - (syncFallbackUsed[fk] || 0);
+          if (avail > 0) {
+            syncFallbackUsed[fk] = (syncFallbackUsed[fk] || 0) + 1;
+            return false;
+          }
+          return true;
+        });
       }
 
       var created = 0;
@@ -317,19 +335,38 @@
         var rows = [];
 
         var existingByImportId = {};
+        var ynabByKey = {};
         for (var t = 0; t < ynabTx.length; t++) {
           var tx = ynabTx[t];
-          if (tx.import_id) existingByImportId[tx.import_id] = tx;
+          if (tx.import_id) {
+            existingByImportId[tx.import_id] = tx;
+          } else {
+            var txKey = tx.date + ':' + tx.amount;
+            if (!ynabByKey[txKey]) ynabByKey[txKey] = [];
+            ynabByKey[txKey].push(tx);
+          }
         }
 
         var bankImportIds = new Set();
         var bankKeys = new Set();
+        var fallbackConsumed = {};
         for (var i = 0; i < movimientos.length; i++) {
           var m = movimientos[i];
           bankImportIds.add(m.import_id);
           bankKeys.add(m.dateNorm + ':' + m.amountMilli);
           var payee = (m.movimientos != null ? m.movimientos : m.descripcion) || '(sin descripción)';
           var matched = existingByImportId[m.import_id] || null;
+          if (!matched) {
+            var fbKey = m.dateNorm + ':' + m.amountMilli;
+            var fbArr = ynabByKey[fbKey];
+            if (fbArr) {
+              var consumed = fallbackConsumed[fbKey] || 0;
+              if (consumed < fbArr.length) {
+                matched = fbArr[consumed];
+                fallbackConsumed[fbKey] = consumed + 1;
+              }
+            }
+          }
           rows.push({
             fecha: m.dateNorm,
             payee: payee,
