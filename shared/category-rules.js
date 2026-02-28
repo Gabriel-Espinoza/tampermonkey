@@ -3,6 +3,13 @@
 
   root.YNABCategoryRules = {
   "exact": {
+    "Mercadopago amasa las condes": "Casa: 🛒 Supermercado",
+    "Neat cuentas basicas san felipe": "Casa: 🧾 Cuentas",
+    "Restaurant casa orie santiago": "Otros: 🍿 Esparcimiento",
+    "Payu diario financi santiago": "Casa: 🎞️ Suscripciones",
+    "Tienda mall plaza los santiago": "Casa: 🚗 Transporte",
+    "Colegio instituto tere tasa int. 0,00%": "Educación: 🎒 Colegios",
+    "Payu uber trip santiago": "Casa: 🚗 Transporte",
     "10176 bk la reina santiago": "Otros: 🍿 Esparcimiento",
     "40533 sbx rosario nort": "Otros: 🍽️ Almuerzo Trabajo",
     "40632 sbx portal la re": "Otros: 🍿 Esparcimiento",
@@ -323,6 +330,76 @@
       "category": "Casa: 🛒 Supermercado",
       "type": "startsWith",
       "value": "unimarc"
+    },
+    {
+      "category": "Casa: 🚗 Transporte",
+      "type": "contains",
+      "value": "parking"
+    }, 
+    {
+      "category": "Casa: 🏠 Vivienda",
+      "type": "contains",
+      "value": "vigahome"
+    }, 
+    {
+      "category": "Salud: 💊 Farmacia",
+      "type": "contains",
+      "value": "salcobrand"
+    }, 
+    {
+      "category": "Otros: 🍿 Esparcimiento",
+      "type": "contains",
+      "value": "Johnny rockets"
+    },
+    {
+      "category": "Salud: 🧑‍⚕️ Médicos",
+      "type": "startsWith",
+      "value": "Odontologia"
+    },
+    {
+      "category": "Casa: 👖 Cuidado Personal",
+      "type": "startsWith",
+      "value": "Bamers"
+    },
+    {
+      "category": "Casa: 🛒 Supermercado",
+      "type": "contains",
+      "value": "Amasanderia"
+    },
+    {
+      "category": "Salud: 🧑‍⚕️ Médicos",
+      "type": "contains",
+      "value": "Clinica"
+    },
+    {
+      "category": "Salud: 💊 Farmacia",
+      "type": "contains",
+      "value": "Meki"
+    },
+    {
+      "value": "Cruz verde",
+      "type": "contains",
+      "category": "Salud: 💊 Farmacia"
+    },
+    {
+      "value": "clover",
+      "type": "contains",
+      "category": "Casa: 🛒 Supermercado"
+    },
+    {
+      "value": "nintendo",
+      "type": "contains",
+      "category": "Otros: 🍿 Esparcimiento"
+    },
+    {
+      "value": "La Nonna",
+      "type": "startsWith",
+      "category": "Casa: 🛒 Supermercado"
+    },
+    {
+      "value": "crunchyroll",
+      "type": "startsWith",
+      "category": "Casa: 🎞️ Suscripciones"
     }
   ],
   "skip": [
