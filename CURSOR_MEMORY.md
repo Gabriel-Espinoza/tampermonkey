@@ -30,5 +30,7 @@
 - Fuzzy matching only applies to YNAB transactions without `import_id` (manual entries).
 - `config.fuzzyDateDays` controls the window (default 7, set to 0 to disable).
 - The YNAB API query range is expanded by `fuzzyDateDays` in both directions to fetch potentially shifted transactions.
-- In `buildYNABPreviewRows`, fuzzy matches show `accion: 'ya existe (YNAB: YYYY-MM-DD)'` so the user can verify.
+- In `buildYNABPreviewRows`, fuzzy matches show `accion: 'corregir fecha (YNAB: YYYY-MM-DD)'` so the user can verify.
+- In `runSyncYNAB`, fuzzy matches trigger `updateYNABTransaction` to correct the YNAB date to the bank (DOM) date. The bank is the authoritative source for dates.
 - `soloEnYNAB` detection uses `matchedYnabIds` instead of key-based checks, which is more accurate for 1-to-1 matching.
+- YNAB flag colors: `orange` = fuzzy date correction applied, `red` = transaction in YNAB but not found in bank DOM.

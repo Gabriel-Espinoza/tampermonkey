@@ -8,7 +8,8 @@
 
   const INTERVAL_MS = 400;
   const YNAB_API_BASE = 'https://api.ynab.com/v1';
-  const YNAB_FLAG_NOT_IN_BANK = 'orange';
+  const YNAB_FLAG_DATE_CORRECTED = 'orange';
+  const YNAB_FLAG_NOT_IN_BANK = 'red';
 
   function waitForElement(selector, maxAttempts) {
     maxAttempts = maxAttempts == null ? 50 : maxAttempts;
@@ -242,6 +243,7 @@
 
       var validMovement = function (m) { return Boolean(m.dateNorm && m.amountMilli !== 0); };
       var matchedYnabIds = new Set();
+      var fuzzyUpdates = [];
       var aCrear;
       if (ynabTx.length === 0) {
         aCrear = movimientos.filter(validMovement);
@@ -287,7 +289,11 @@
                   best = candidates[ci];
                 }
               }
-              if (best) { matchedYnabIds.add(best.id); return false; }
+              if (best) {
+                matchedYnabIds.add(best.id);
+                fuzzyUpdates.push({ id: best.id, newDate: m.dateNorm });
+                return false;
+              }
             }
           }
           return true;
@@ -313,30 +319,42 @@
       });
 
       return Promise.all(createPromises).then(function () {
-        if (config.skipMarkNotInBank) {
-          var msg = 'Listo. Creadas en YNAB: ' + created + '.';
-          if (createErrors.length) msg += ' Errores al crear: ' + createErrors.slice(0, 3).join('; ');
-          alert(msg);
-          return;
-        }
+        var updatePromises = [];
+        var corrected = 0;
+        var correctErrors = [];
 
-        var soloEnYNAB = ynabTx.filter(function (t) {
-          return !matchedYnabIds.has(t.id);
+        fuzzyUpdates.forEach(function (u) {
+          updatePromises.push(
+            updateYNABTransaction(accessToken, budgetId, u.id, { date: u.newDate, flag_color: YNAB_FLAG_DATE_CORRECTED }).then(function (res) {
+              if (res.success) corrected++;
+              else correctErrors.push(res.error);
+            })
+          );
         });
 
         var marked = 0;
         var markErrors = [];
-        var markPromises = soloEnYNAB.map(function (t) {
-          var newMemo = (t.memo || '') + memoSuffix;
-          return updateYNABTransaction(accessToken, budgetId, t.id, { flag_color: YNAB_FLAG_NOT_IN_BANK, memo: newMemo }).then(function (res) {
-            if (res.success) marked++;
-            else markErrors.push(res.error);
+        if (!config.skipMarkNotInBank) {
+          var soloEnYNAB = ynabTx.filter(function (t) {
+            return !matchedYnabIds.has(t.id);
           });
-        });
+          soloEnYNAB.forEach(function (t) {
+            var newMemo = (t.memo || '') + memoSuffix;
+            updatePromises.push(
+              updateYNABTransaction(accessToken, budgetId, t.id, { flag_color: YNAB_FLAG_NOT_IN_BANK, memo: newMemo }).then(function (res) {
+                if (res.success) marked++;
+                else markErrors.push(res.error);
+              })
+            );
+          });
+        }
 
-        return Promise.all(markPromises).then(function () {
-          var msg = 'Listo. Creadas en YNAB: ' + created + '. Marcadas (no en extracto): ' + marked + '.';
+        return Promise.all(updatePromises).then(function () {
+          var msg = 'Listo. Creadas: ' + created + '.';
+          if (corrected > 0) msg += ' Fechas corregidas: ' + corrected + '.';
+          if (!config.skipMarkNotInBank) msg += ' Marcadas (no en extracto): ' + marked + '.';
           if (createErrors.length) msg += ' Errores al crear: ' + createErrors.slice(0, 3).join('; ');
+          if (correctErrors.length) msg += ' Errores corrigiendo fechas: ' + correctErrors.slice(0, 3).join('; ');
           if (markErrors.length) msg += ' Errores al marcar: ' + markErrors.slice(0, 3).join('; ');
           alert(msg);
         });
@@ -437,7 +455,7 @@
             }
           }
           var accion = matched
-            ? (fuzzyMatched ? 'ya existe (YNAB: ' + matched.date + ')' : 'ya existe')
+            ? (fuzzyMatched ? 'corregir fecha (YNAB: ' + matched.date + ')' : 'ya existe')
             : 'crear';
           rows.push({
             fecha: m.dateNorm,
