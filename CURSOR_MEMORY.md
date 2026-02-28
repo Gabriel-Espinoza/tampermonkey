@@ -36,6 +36,13 @@
 - YNAB flag colors: `orange` = fuzzy date correction applied, `red` = transaction in YNAB but not found in bank DOM.
 - Flag priority: existing YNAB flags are never overwritten. Orange/red are only applied when the transaction has no flag yet.
 
+## Billing Cutoff Filtering (tarjeta-nacional-facturado)
+
+- `skipMarkAfterDate` prevents flagging YNAB transactions that are after the billing cycle cutoff.
+- For facturado, cuota transactions have dates adjusted to the current month, which pushes `untilDate` forward and causes false "marcar" entries for recent YNAB transactions not yet billed.
+- `getMaxNonCuotaDate` computes the latest date among non-cuota movimientos, used as `skipMarkAfterDate`.
+- Non-cuota items are identified by absence of `memo` starting with `'cuota '`.
+
 ## Cuota Date Adjustment (tarjeta-nacional-facturado)
 
 - For installment transactions (cuota != "01/1"), the bank shows the original purchase date, not the billing date.

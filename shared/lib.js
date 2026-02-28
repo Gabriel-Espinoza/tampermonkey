@@ -204,9 +204,10 @@
   /**
    * Run YNAB sync: create missing transactions, mark "only in YNAB" with flag and memo suffix.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion (payee), optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, fuzzyDateDays? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, fuzzyDateDays?, skipMarkAfterDate? }
    *   skipMarkNotInBank: if true, skip flagging YNAB transactions not found in bank data (use for paginated tables where DOM shows partial data)
    *   fuzzyDateDays: max days offset for fuzzy date matching on manual YNAB entries (default 7, 0 to disable)
+   *   skipMarkAfterDate: if set (YYYY-MM-DD), skip marking YNAB transactions with date > this value (use for facturado where recent transactions aren't billed yet)
    * @returns {Promise<void>} shows alert with result
    */
   function runSyncYNAB(movimientos, config) {
@@ -355,6 +356,7 @@
         var markErrors = [];
         if (!config.skipMarkNotInBank) {
           var soloEnYNAB = ynabTx.filter(function (t) {
+            if (config.skipMarkAfterDate && t.date > config.skipMarkAfterDate) return false;
             return !matchedYnabIds.has(t.id);
           });
           soloEnYNAB.forEach(function (t) {
@@ -389,10 +391,11 @@
    * Build CSV-ready preview rows reflecting what a YNAB sync would do.
    * Calls the YNAB API to compare bank movements against existing transactions.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion, optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, skipReconciled?, fuzzyDateDays? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, skipReconciled?, fuzzyDateDays?, skipMarkAfterDate? }
    *   skipMarkNotInBank: if true, omit "marcar" rows from preview (use for paginated tables)
    *   skipReconciled: if true, ignore reconciled YNAB transactions when building "marcar" rows
    *   fuzzyDateDays: max days offset for fuzzy date matching on manual YNAB entries (default 7, 0 to disable)
+   *   skipMarkAfterDate: if set (YYYY-MM-DD), skip marking YNAB transactions with date > this value (use for facturado where recent transactions aren't billed yet)
    * @returns {Promise<{rows: Array<Object>, error: string|null}>}
    */
   function buildYNABPreviewRows(movimientos, config) {
@@ -510,6 +513,7 @@
         if (!config.skipMarkNotInBank) {
           var soloEnYNAB = ynabTx.filter(function (t) {
             if (config.skipReconciled && t.cleared === 'reconciled') return false;
+            if (config.skipMarkAfterDate && t.date > config.skipMarkAfterDate) return false;
             return !matchedYnabIds.has(t.id);
           });
           for (var j = 0; j < soloEnYNAB.length; j++) {

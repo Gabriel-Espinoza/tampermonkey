@@ -93,6 +93,18 @@
       return dd + '/' + mm + '/' + curYear;
     }
 
+    function getMaxNonCuotaDate(movimientos) {
+      var maxDate = null;
+      for (var i = 0; i < movimientos.length; i++) {
+        var m = movimientos[i];
+        if (m.memo && m.memo.indexOf('cuota ') === 0) continue;
+        if (m.dateNorm && (!maxDate || m.dateNorm > maxDate)) {
+          maxDate = m.dateNorm;
+        }
+      }
+      return maxDate;
+    }
+
     function toNormalizedMovimientos(datos) {
       var out = [];
       for (var i = 0; i < datos.length; i++) {
@@ -126,7 +138,8 @@
         accessToken: YNAB_ACCESS_TOKEN,
         budgetId: YNAB_BUDGET_ID,
         accountId: YNAB_ACCOUNT_ID,
-        skipReconciled: true
+        skipReconciled: true,
+        skipMarkAfterDate: getMaxNonCuotaDate(movimientos)
       });
       if (result.error) {
         alert('Error al obtener datos de YNAB: ' + result.error);
@@ -154,7 +167,8 @@
       await Lib.runSyncYNAB(movimientos, {
         accessToken: YNAB_ACCESS_TOKEN,
         budgetId: YNAB_BUDGET_ID,
-        accountId: YNAB_ACCOUNT_ID
+        accountId: YNAB_ACCOUNT_ID,
+        skipMarkAfterDate: getMaxNonCuotaDate(movimientos)
       });
     }
 
