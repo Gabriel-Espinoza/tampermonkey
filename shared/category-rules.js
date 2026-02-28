@@ -400,6 +400,16 @@
       "value": "crunchyroll",
       "type": "startsWith",
       "category": "Casa: 🎞️ Suscripciones"
+    },
+    {
+      "value": "Liga ch contra",
+      "type": "startsWith",
+      "category": "Salud: 💊 Farmacia"
+    },
+    {
+      "value": "U. andes",
+      "type": "startsWith",
+      "category": "Salud: 🧑‍⚕️ Médicos"
     }
   ],
   "skip": [
