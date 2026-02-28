@@ -225,6 +225,13 @@
 
     var exact = rules.exact || {};
     if (exact[key]) return exact[key];
+    // Fallback: rule keys may be stored in original form (e.g. capitals, punctuation).
+    // Normalize each key and match to support manually edited or inconsistently cased rules.
+    for (var ruleKey in exact) {
+      if (Object.prototype.hasOwnProperty.call(exact, ruleKey) && normalizePayeeKey(ruleKey) === key) {
+        return exact[ruleKey];
+      }
+    }
 
     var patterns = Array.isArray(rules.patterns) ? rules.patterns : [];
     for (var p = 0; p < patterns.length; p++) {

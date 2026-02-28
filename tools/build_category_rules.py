@@ -27,6 +27,14 @@ SKIP_PREFIXES = [
     "cashback com",
 ]
 
+# Pattern generation thresholds (relax to get more rules, tighten to reduce false matches)
+MIN_PREFIX_LEN = 4              # min chars for startsWith prefix (e.g. "jumbo", "cafe")
+MIN_TOKEN_LEN = 4               # min chars for contains token (was 6; 4 allows "uber", "copec")
+MIN_PAYEE_COUNT = 1             # min distinct payees / occurrences for pattern
+MIN_OCCURRENCES_CONTAINS = 2    # min occurrences for contains (was 4)
+CONFIDENCE_STARTS_WITH = 0.85   # fraction of payees with same category (was 0.9)
+CONFIDENCE_CONTAINS = 0.90      # same for contains (was 0.95)
+
 TOKEN_STOPWORDS = {
     "compra",
     "compras",
@@ -127,23 +135,23 @@ def build_patterns(exact: dict[str, str]) -> list[dict[str, str]]:
             continue
 
         prefix = parts[0]
-        if len(prefix) >= 4 and prefix not in TOKEN_STOPWORDS and not prefix.isdigit():
+        if len(prefix) >= MIN_PREFIX_LEN and prefix not in TOKEN_STOPWORDS and not prefix.isdigit():
             prefix_to_category_counts[prefix][category] += 1
             prefix_to_payees[prefix].add(payee_norm)
 
         unique_tokens = set(parts)
         for token in unique_tokens:
-            if len(token) < 6 or token in TOKEN_STOPWORDS or token.isdigit():
+            if len(token) < MIN_TOKEN_LEN or token in TOKEN_STOPWORDS or token.isdigit():
                 continue
             token_to_category_counts[token][category] += 1
 
     for prefix, cat_counter in sorted(prefix_to_category_counts.items()):
         payee_count = len(prefix_to_payees[prefix])
         total = sum(cat_counter.values())
-        if payee_count < 3 or total < 3:
+        if payee_count < MIN_PAYEE_COUNT or total < MIN_PAYEE_COUNT:
             continue
         top_category, top_count = cat_counter.most_common(1)[0]
-        if (top_count / total) >= 0.9:
+        if (top_count / total) >= CONFIDENCE_STARTS_WITH:
             starts_with.append(
                 {
                     "type": "startsWith",
@@ -154,10 +162,10 @@ def build_patterns(exact: dict[str, str]) -> list[dict[str, str]]:
 
     for token, cat_counter in sorted(token_to_category_counts.items()):
         total = sum(cat_counter.values())
-        if total < 4:
+        if total < MIN_OCCURRENCES_CONTAINS:
             continue
         top_category, top_count = cat_counter.most_common(1)[0]
-        if (top_count / total) >= 0.95:
+        if (top_count / total) >= CONFIDENCE_CONTAINS:
             contains.append(
                 {
                     "type": "contains",

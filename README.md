@@ -224,7 +224,7 @@ El sync ahora puede asignar `category_id` al crear transacciones vía API, usand
 ### Cómo funciona
 
 1. `shared/category-rules.js` define reglas de inferencia (`exact`, `patterns`, `skip`).
-2. `shared/lib.js` infiere la categoría desde el payee (`inferCategory`).
+2. `shared/lib.js` infiere la categoría desde el payee (`inferCategory`). El payee se normaliza (minúsculas, sin acentos, puntuación → espacios); si una regla `exact` tiene la clave en formato original, se busca también por comparación normalizada.
 3. Antes de crear transacciones, `lib.js` obtiene categorías del presupuesto (`GET /categories`) y resuelve `Group: Category -> category_id`.
 4. Si hay match, se envía `category_id` en el `POST /transactions`. Si no hay match, la transacción se crea sin categoría (comportamiento anterior).
 
