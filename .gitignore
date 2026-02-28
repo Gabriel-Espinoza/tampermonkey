@@ -1,3 +1,4 @@
 dom examples/
 loaders/*.gabo.*
 loaders/tokens.jsonc
+tools/__pycache__/build_category_rules.cpython-313.pyc

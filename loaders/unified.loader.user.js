@@ -9,6 +9,7 @@
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/cuenta-nacional*
 // @grant        none
 // @require      https://gabriel-espinoza.github.io/tampermonkey/shared/lib.js
+// @require      https://gabriel-espinoza.github.io/tampermonkey/shared/category-rules.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/cuenta-corriente.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-nacional.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-nacional-facturado.js

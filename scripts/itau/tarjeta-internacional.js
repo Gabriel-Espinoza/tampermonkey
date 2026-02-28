@@ -114,7 +114,7 @@
         alert('Error al obtener datos de YNAB: ' + result.error);
         return;
       }
-      var headers = ['fecha', 'payee', 'monto', 'memo', 'import_id', 'accion', 'flag_color', 'marcar'];
+      var headers = ['fecha', 'payee', 'monto', 'memo', 'import_id', 'categoria_inferida', 'accion', 'flag_color', 'marcar'];
       var csv = Lib.toCSV(result.rows, headers);
       var dateStr = new Date().toISOString().slice(0, 10);
       Lib.downloadCSV(csv, 'movimientos-itau-tarjeta-dolares-' + dateStr + '.csv');

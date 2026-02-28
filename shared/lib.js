@@ -10,6 +10,7 @@
   const YNAB_API_BASE = 'https://api.ynab.com/v1';
   const YNAB_FLAG_DATE_CORRECTED = 'orange';
   const YNAB_FLAG_NOT_IN_BANK = 'red';
+  const YNAB_CATEGORY_CACHE = Object.create(null);
 
   function waitForElement(selector, maxAttempts) {
     maxAttempts = maxAttempts == null ? 50 : maxAttempts;
@@ -201,6 +202,73 @@
     });
   }
 
+  function normalizePayeeKey(value) {
+    if (!value || !String(value).trim()) return '';
+    var s = String(value).toLowerCase().trim().replace(/\u00a0/g, ' ');
+    if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    s = s.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return s;
+  }
+
+  function inferCategory(payeeName) {
+    var rules = root.YNABCategoryRules;
+    if (!rules) return null;
+    var key = normalizePayeeKey(payeeName);
+    if (!key) return null;
+
+    var skip = Array.isArray(rules.skip) ? rules.skip : [];
+    for (var i = 0; i < skip.length; i++) {
+      var skipKey = normalizePayeeKey(skip[i]);
+      if (!skipKey) continue;
+      if (key === skipKey || key.indexOf(skipKey + ' ') === 0) return null;
+    }
+
+    var exact = rules.exact || {};
+    if (exact[key]) return exact[key];
+
+    var patterns = Array.isArray(rules.patterns) ? rules.patterns : [];
+    for (var p = 0; p < patterns.length; p++) {
+      var pat = patterns[p];
+      if (!pat || !pat.type || !pat.value || !pat.category) continue;
+      var value = normalizePayeeKey(pat.value);
+      if (!value) continue;
+      if (pat.type === 'startsWith' && (key === value || key.indexOf(value + ' ') === 0)) return pat.category;
+      if (pat.type === 'contains' && key.indexOf(value) !== -1) return pat.category;
+    }
+    return null;
+  }
+
+  function getYNABCategories(accessToken, budgetId) {
+    if (YNAB_CATEGORY_CACHE[budgetId]) {
+      return Promise.resolve({ map: YNAB_CATEGORY_CACHE[budgetId], error: null });
+    }
+    var path = '/budgets/' + budgetId + '/categories';
+    return ynabFetch(accessToken, budgetId, path).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          return { map: null, error: 'YNAB ' + res.status + ': ' + t };
+        });
+      }
+      return res.json().then(function (data) {
+        var groups = (data.data && data.data.category_groups) ? data.data.category_groups : [];
+        var map = {};
+        for (var gi = 0; gi < groups.length; gi++) {
+          var g = groups[gi];
+          if (!g || g.deleted) continue;
+          var cats = Array.isArray(g.categories) ? g.categories : [];
+          for (var ci = 0; ci < cats.length; ci++) {
+            var c = cats[ci];
+            if (!c || c.deleted || !c.id || !c.name) continue;
+            var fullName = g.name + ': ' + c.name;
+            map[fullName] = c.id;
+          }
+        }
+        YNAB_CATEGORY_CACHE[budgetId] = map;
+        return { map: map, error: null };
+      });
+    });
+  }
+
   /**
    * Run YNAB sync: create missing transactions, mark "only in YNAB" with flag and memo suffix.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion (payee), optional memo
@@ -318,25 +386,39 @@
         });
       }
 
-      var created = 0;
-      var createErrors = [];
-      var createPromises = aCrear.map(function (mov) {
-        var payee = (mov.movimientos != null ? mov.movimientos : mov.descripcion) || '(sin descripción)';
-        var tx = {
-          account_id: accountId,
-          date: mov.dateNorm,
-          amount: mov.amountMilli,
-          payee_name: payee,
-          import_id: mov.import_id
-        };
-        if (mov.memo) tx.memo = mov.memo;
-        return createYNABTransaction(accessToken, budgetId, tx).then(function (res) {
-          if (res.success) created++;
-          else createErrors.push(res.error);
-        });
-      });
+      return getYNABCategories(accessToken, budgetId).then(function (catRes) {
+        var categoryMap = (catRes && catRes.map) ? catRes.map : null;
+        if (catRes && catRes.error) {
+          // Category inference is best-effort; sync continues even if category fetch fails.
+          console.warn('[BankYNABLib] No se pudieron cargar categorías de YNAB:', catRes.error);
+        }
 
-      return Promise.all(createPromises).then(function () {
+        var created = 0;
+        var createErrors = [];
+        var createPromises = aCrear.map(function (mov) {
+          var payee = (mov.movimientos != null ? mov.movimientos : mov.descripcion) || '(sin descripción)';
+          var tx = {
+            account_id: accountId,
+            date: mov.dateNorm,
+            amount: mov.amountMilli,
+            payee_name: payee,
+            import_id: mov.import_id
+          };
+          if (mov.memo) tx.memo = mov.memo;
+          if (mov.category_id) tx.category_id = mov.category_id;
+          if (!tx.category_id && categoryMap) {
+            var inferredCategory = inferCategory(payee);
+            if (inferredCategory && categoryMap[inferredCategory]) {
+              tx.category_id = categoryMap[inferredCategory];
+            }
+          }
+          return createYNABTransaction(accessToken, budgetId, tx).then(function (res) {
+            if (res.success) created++;
+            else createErrors.push(res.error);
+          });
+        });
+
+        return Promise.all(createPromises).then(function () {
         var updatePromises = [];
         var corrected = 0;
         var correctErrors = [];
@@ -381,6 +463,7 @@
           if (markErrors.length) msg += ' Errores al marcar: ' + markErrors.slice(0, 3).join('; ');
           alert(msg);
         });
+      });
       });
     }).catch(function (err) {
       alert('Error de red al contactar YNAB: ' + (err.message || String(err)));
@@ -489,6 +572,7 @@
         for (var i = 0; i < movimientos.length; i++) {
           var m = movimientos[i];
           var payee = (m.movimientos != null ? m.movimientos : m.descripcion) || '(sin descripción)';
+          var inferredCategory = inferCategory(payee);
           var result = matchResults[i];
           var matched = result ? result.matched : null;
           var fuzzyMatched = result ? result.fuzzy : false;
@@ -504,6 +588,7 @@
             monto: m.amountMilli,
             memo: m.memo || '',
             import_id: m.import_id,
+            categoria_inferida: inferredCategory || '',
             accion: accion,
             flag_color: rowFlagColor,
             marcar: ''
@@ -524,6 +609,7 @@
               monto: s.amount,
               memo: s.memo || '',
               import_id: s.import_id || '',
+              categoria_inferida: '',
               accion: 'marcar',
               flag_color: s.flag_color || 'red',
               marcar: memoSuffix.trim()
@@ -576,6 +662,8 @@
     getYNABTransactions: getYNABTransactions,
     createYNABTransaction: createYNABTransaction,
     updateYNABTransaction: updateYNABTransaction,
+    inferCategory: inferCategory,
+    getYNABCategories: getYNABCategories,
     runSyncYNAB: runSyncYNAB,
     buildYNABPreviewRows: buildYNABPreviewRows,
     injectButton: injectButton

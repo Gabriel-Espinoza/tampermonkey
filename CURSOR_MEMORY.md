@@ -49,3 +49,13 @@
 - `adjustDateToCurrentMonth` replaces month/year with the current month/year, keeping the same day.
 - If the day doesn't exist in the current month (e.g., day 31 in February), it clamps to the last day of the month.
 - This ensures YNAB reflects when the money actually leaves (billing cycle), not when the purchase was made.
+
+## Auto-categorization by Payee
+
+- `shared/category-rules.js` is loaded via `@require` and exposes `window.YNABCategoryRules`.
+- Rules are deterministic and normalized (lowercase, accents removed, punctuation collapsed): `exact` -> `startsWith` -> `contains`.
+- `skip` rules prevent auto-categorizing system entries (transfer/starting-balance/cashback-like payees).
+- `runSyncYNAB` fetches categories from YNAB (`GET /categories`) and resolves `"Group: Category"` to `category_id`.
+- Category assignment is best-effort: if category lookup fails or no rule matches, transaction creation continues uncategorized (no sync regression).
+- `buildYNABPreviewRows` now includes `categoria_inferida` so CSV diagnostics show what category would be assigned before syncing.
+- Rule generation script: `tools/build_category_rules.py` builds `shared/category-rules.js` from a YNAB TSV export and reports ambiguous payees for manual review.

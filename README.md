@@ -14,7 +14,8 @@ tampermonkey/
 ├── README.md
 ├── .gitignore
 ├── shared/
-│   └── lib.js                         # Librería compartida (GitHub Pages)
+│   ├── lib.js                         # Librería compartida (GitHub Pages)
+│   └── category-rules.js              # Reglas de auto-categorización por payee (generadas)
 ├── scripts/
 │   └── itau/
 │       ├── cuenta-corriente.js        # Módulo público (GitHub Pages)
@@ -152,6 +153,7 @@ Si haces un fork o creas tu propio repo:
 Con eso quedarán disponibles:
 
 - `https://<usuario>.github.io/<repo>/shared/lib.js`
+- `https://<usuario>.github.io/<repo>/shared/category-rules.js`
 - `https://<usuario>.github.io/<repo>/scripts/itau/cuenta-corriente.js`
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-nacional.js`
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-nacional-facturado.js`
@@ -202,6 +204,7 @@ El botón "Descargar CSV" genera un archivo orientado a diagnosticar la sincroni
 | `monto`      | Monto en miliunidades (formato YNAB: entero, negativo para egresos)                                 |
 | `memo`       | Memo que se enviaría (ej. `cuota 02/3`, `USD a 950`)                                                |
 | `import_id`  | Llave de deduplicación YNAB (ej. `YNAB:-150000:2026-02-15:1`)                                      |
+| `categoria_inferida` | Categoría inferida por reglas de payee (vacío si no hay match o la transacción no se categoriza automáticamente) |
 | `accion`     | Qué haría el sync: `crear` (nueva), `ya existe` (se saltaría), `marcar` (solo en YNAB, se flaggea) |
 | `flag_color` | Color de flag actual en YNAB (vacío si no tiene; ej. `orange` si ya fue marcada)                    |
 | `marcar`     | Vacío para transacciones del banco; para las que están solo en YNAB: `[No aparece en extracto Itaú]`|
@@ -213,6 +216,29 @@ El botón "Descargar CSV" genera un archivo orientado a diagnosticar la sincroni
 3. **`marcar`** — Transacción que existe en YNAB pero no aparece en el extracto bancario. Se marcaría con flag naranja y memo suffix. Solo aplica en tablas no paginadas (ver sección siguiente).
 
 > La descarga del CSV requiere credenciales YNAB configuradas (llama a la API para comparar). Si la tarjeta internacional está involucrada, también pedirá la tasa de conversión USD → CLP.
+
+## Auto-categorización por payee
+
+El sync ahora puede asignar `category_id` al crear transacciones vía API, usando reglas determinísticas por payee.
+
+### Cómo funciona
+
+1. `shared/category-rules.js` define reglas de inferencia (`exact`, `patterns`, `skip`).
+2. `shared/lib.js` infiere la categoría desde el payee (`inferCategory`).
+3. Antes de crear transacciones, `lib.js` obtiene categorías del presupuesto (`GET /categories`) y resuelve `Group: Category -> category_id`.
+4. Si hay match, se envía `category_id` en el `POST /transactions`. Si no hay match, la transacción se crea sin categoría (comportamiento anterior).
+
+### Regenerar reglas desde export de YNAB
+
+Puedes regenerar `shared/category-rules.js` con el historial más reciente:
+
+```bash
+python3 "tools/build_category_rules.py" \
+  --input "/ruta/a/YNAB Export.tsv" \
+  --output "shared/category-rules.js"
+```
+
+El script usa solo librerías estándar de Python y reporta en consola payees ambiguos (cuando un mismo payee aparece con múltiples categorías) para revisión manual.
 
 ## Tablas paginadas vs. no paginadas
 
