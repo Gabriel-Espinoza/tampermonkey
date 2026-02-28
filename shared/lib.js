@@ -291,7 +291,7 @@
               }
               if (best) {
                 matchedYnabIds.add(best.id);
-                fuzzyUpdates.push({ id: best.id, newDate: m.dateNorm });
+                fuzzyUpdates.push({ id: best.id, newDate: m.dateNorm, existingFlag: best.flag_color || null });
                 return false;
               }
             }
@@ -324,8 +324,10 @@
         var correctErrors = [];
 
         fuzzyUpdates.forEach(function (u) {
+          var patch = { date: u.newDate };
+          if (!u.existingFlag) patch.flag_color = YNAB_FLAG_DATE_CORRECTED;
           updatePromises.push(
-            updateYNABTransaction(accessToken, budgetId, u.id, { date: u.newDate, flag_color: YNAB_FLAG_DATE_CORRECTED }).then(function (res) {
+            updateYNABTransaction(accessToken, budgetId, u.id, patch).then(function (res) {
               if (res.success) corrected++;
               else correctErrors.push(res.error);
             })
@@ -340,8 +342,10 @@
           });
           soloEnYNAB.forEach(function (t) {
             var newMemo = (t.memo || '') + memoSuffix;
+            var patch = { memo: newMemo };
+            if (!t.flag_color) patch.flag_color = YNAB_FLAG_NOT_IN_BANK;
             updatePromises.push(
-              updateYNABTransaction(accessToken, budgetId, t.id, { flag_color: YNAB_FLAG_NOT_IN_BANK, memo: newMemo }).then(function (res) {
+              updateYNABTransaction(accessToken, budgetId, t.id, patch).then(function (res) {
                 if (res.success) marked++;
                 else markErrors.push(res.error);
               })
@@ -457,6 +461,9 @@
           var accion = matched
             ? (fuzzyMatched ? 'corregir fecha (YNAB: ' + matched.date + ')' : 'ya existe')
             : 'crear';
+          var rowFlagColor = matched
+            ? (matched.flag_color || (fuzzyMatched ? 'orange' : ''))
+            : '';
           rows.push({
             fecha: m.dateNorm,
             payee: payee,
@@ -464,7 +471,7 @@
             memo: m.memo || '',
             import_id: m.import_id,
             accion: accion,
-            flag_color: matched ? (matched.flag_color || '') : '',
+            flag_color: rowFlagColor,
             marcar: ''
           });
         }
@@ -483,7 +490,7 @@
               memo: s.memo || '',
               import_id: s.import_id || '',
               accion: 'marcar',
-              flag_color: s.flag_color || '',
+              flag_color: s.flag_color || 'red',
               marcar: memoSuffix.trim()
             });
           }

@@ -34,3 +34,4 @@
 - In `runSyncYNAB`, fuzzy matches trigger `updateYNABTransaction` to correct the YNAB date to the bank (DOM) date. The bank is the authoritative source for dates.
 - `soloEnYNAB` detection uses `matchedYnabIds` instead of key-based checks, which is more accurate for 1-to-1 matching.
 - YNAB flag colors: `orange` = fuzzy date correction applied, `red` = transaction in YNAB but not found in bank DOM.
+- Flag priority: existing YNAB flags are never overwritten. Orange/red are only applied when the transaction has no flag yet.
