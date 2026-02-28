@@ -80,6 +80,21 @@
     return y + '-' + mo + '-' + day;
   }
 
+  function daysBetween(dateA, dateB) {
+    var a = new Date(dateA + 'T00:00:00');
+    var b = new Date(dateB + 'T00:00:00');
+    return Math.round(Math.abs(a - b) / 86400000);
+  }
+
+  function shiftDate(dateStr, days) {
+    var d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    var y = d.getFullYear();
+    var mo = String(d.getMonth() + 1).padStart(2, '0');
+    var dy = String(d.getDate()).padStart(2, '0');
+    return y + '-' + mo + '-' + dy;
+  }
+
   /**
    * Parse CLP amount string to milliunits. Chilean format: thousands dot, decimal comma; optional "$ ".
    * @param {string} value
@@ -188,8 +203,9 @@
   /**
    * Run YNAB sync: create missing transactions, mark "only in YNAB" with flag and memo suffix.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion (payee), optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, fuzzyDateDays? }
    *   skipMarkNotInBank: if true, skip flagging YNAB transactions not found in bank data (use for paginated tables where DOM shows partial data)
+   *   fuzzyDateDays: max days offset for fuzzy date matching on manual YNAB entries (default 7, 0 to disable)
    * @returns {Promise<void>} shows alert with result
    */
   function runSyncYNAB(movimientos, config) {
@@ -210,8 +226,11 @@
     }
     var sinceDate = fechas.reduce(function (a, b) { return a < b ? a : b; });
     var untilDate = fechas.reduce(function (a, b) { return a > b ? a : b; });
+    var fuzzyDays = config.fuzzyDateDays != null ? config.fuzzyDateDays : 7;
+    var apiSinceDate = fuzzyDays > 0 ? shiftDate(sinceDate, -fuzzyDays) : sinceDate;
+    var apiUntilDate = fuzzyDays > 0 ? shiftDate(untilDate, fuzzyDays) : untilDate;
 
-    return getYNABTransactions(accessToken, budgetId, accountId, sinceDate, untilDate).then(function (r) {
+    return getYNABTransactions(accessToken, budgetId, accountId, apiSinceDate, apiUntilDate).then(function (r) {
       var ynabTx = r.transactions;
       var fetchError = r.error;
       if (fetchError) {
@@ -222,27 +241,54 @@
       }
 
       var validMovement = function (m) { return Boolean(m.dateNorm && m.amountMilli !== 0); };
+      var matchedYnabIds = new Set();
       var aCrear;
       if (ynabTx.length === 0) {
         aCrear = movimientos.filter(validMovement);
       } else {
-        var existingImportIds = new Set(ynabTx.map(function (t) { return t.import_id; }).filter(Boolean));
-        var ynabKeyCount = {};
+        var existingByImportId = {};
+        var ynabByKey = {};
+        var ynabByAmount = {};
         for (var ti = 0; ti < ynabTx.length; ti++) {
-          if (!ynabTx[ti].import_id) {
-            var tk = ynabTx[ti].date + ':' + ynabTx[ti].amount;
-            ynabKeyCount[tk] = (ynabKeyCount[tk] || 0) + 1;
+          var txn = ynabTx[ti];
+          if (txn.import_id) {
+            existingByImportId[txn.import_id] = txn;
+          } else {
+            var tk = txn.date + ':' + txn.amount;
+            if (!ynabByKey[tk]) ynabByKey[tk] = [];
+            ynabByKey[tk].push(txn);
+            var amtK = String(txn.amount);
+            if (!ynabByAmount[amtK]) ynabByAmount[amtK] = [];
+            ynabByAmount[amtK].push(txn);
           }
         }
-        var syncFallbackUsed = {};
         aCrear = movimientos.filter(function (m) {
           if (!validMovement(m)) return false;
-          if (existingImportIds.has(m.import_id)) return false;
-          var fk = m.dateNorm + ':' + m.amountMilli;
-          var avail = (ynabKeyCount[fk] || 0) - (syncFallbackUsed[fk] || 0);
-          if (avail > 0) {
-            syncFallbackUsed[fk] = (syncFallbackUsed[fk] || 0) + 1;
-            return false;
+          var byImport = existingByImportId[m.import_id];
+          if (byImport) { matchedYnabIds.add(byImport.id); return false; }
+          var fbArr = ynabByKey[m.dateNorm + ':' + m.amountMilli];
+          if (fbArr) {
+            for (var fi = 0; fi < fbArr.length; fi++) {
+              if (!matchedYnabIds.has(fbArr[fi].id)) {
+                matchedYnabIds.add(fbArr[fi].id);
+                return false;
+              }
+            }
+          }
+          if (fuzzyDays > 0) {
+            var candidates = ynabByAmount[String(m.amountMilli)];
+            if (candidates) {
+              var best = null, bestDist = Infinity;
+              for (var ci = 0; ci < candidates.length; ci++) {
+                if (matchedYnabIds.has(candidates[ci].id)) continue;
+                var dist = daysBetween(m.dateNorm, candidates[ci].date);
+                if (dist > 0 && dist <= fuzzyDays && dist < bestDist) {
+                  bestDist = dist;
+                  best = candidates[ci];
+                }
+              }
+              if (best) { matchedYnabIds.add(best.id); return false; }
+            }
           }
           return true;
         });
@@ -274,12 +320,8 @@
           return;
         }
 
-        var bankImportIds = new Set(movimientos.map(function (m) { return m.import_id; }));
-        var bankKeys = new Set(movimientos.map(function (m) { return m.dateNorm + ':' + m.amountMilli; }));
         var soloEnYNAB = ynabTx.filter(function (t) {
-          if (t.import_id) return !bankImportIds.has(t.import_id);
-          var key = t.date + ':' + t.amount;
-          return !bankKeys.has(key);
+          return !matchedYnabIds.has(t.id);
         });
 
         var marked = 0;
@@ -308,9 +350,10 @@
    * Build CSV-ready preview rows reflecting what a YNAB sync would do.
    * Calls the YNAB API to compare bank movements against existing transactions.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion, optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, skipReconciled? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, skipReconciled?, fuzzyDateDays? }
    *   skipMarkNotInBank: if true, omit "marcar" rows from preview (use for paginated tables)
    *   skipReconciled: if true, ignore reconciled YNAB transactions when building "marcar" rows
+   *   fuzzyDateDays: max days offset for fuzzy date matching on manual YNAB entries (default 7, 0 to disable)
    * @returns {Promise<{rows: Array<Object>, error: string|null}>}
    */
   function buildYNABPreviewRows(movimientos, config) {
@@ -327,8 +370,11 @@
     if (fechas.length === 0) return Promise.resolve({ rows: [], error: 'No se pudieron normalizar fechas.' });
     var sinceDate = fechas.reduce(function (a, b) { return a < b ? a : b; });
     var untilDate = fechas.reduce(function (a, b) { return a > b ? a : b; });
+    var fuzzyDays = config.fuzzyDateDays != null ? config.fuzzyDateDays : 7;
+    var apiSinceDate = fuzzyDays > 0 ? shiftDate(sinceDate, -fuzzyDays) : sinceDate;
+    var apiUntilDate = fuzzyDays > 0 ? shiftDate(untilDate, fuzzyDays) : untilDate;
 
-    return getYNABTransactions(accessToken, budgetId, accountId, sinceDate, untilDate)
+    return getYNABTransactions(accessToken, budgetId, accountId, apiSinceDate, apiUntilDate)
       .then(function (r) {
         if (r.error) return { rows: [], error: r.error };
         var ynabTx = r.transactions;
@@ -336,6 +382,7 @@
 
         var existingByImportId = {};
         var ynabByKey = {};
+        var ynabByAmount = {};
         for (var t = 0; t < ynabTx.length; t++) {
           var tx = ynabTx[t];
           if (tx.import_id) {
@@ -344,36 +391,61 @@
             var txKey = tx.date + ':' + tx.amount;
             if (!ynabByKey[txKey]) ynabByKey[txKey] = [];
             ynabByKey[txKey].push(tx);
+            var amtKey = String(tx.amount);
+            if (!ynabByAmount[amtKey]) ynabByAmount[amtKey] = [];
+            ynabByAmount[amtKey].push(tx);
           }
         }
 
-        var bankImportIds = new Set();
-        var bankKeys = new Set();
-        var fallbackConsumed = {};
+        var matchedYnabIds = new Set();
         for (var i = 0; i < movimientos.length; i++) {
           var m = movimientos[i];
-          bankImportIds.add(m.import_id);
-          bankKeys.add(m.dateNorm + ':' + m.amountMilli);
           var payee = (m.movimientos != null ? m.movimientos : m.descripcion) || '(sin descripción)';
           var matched = existingByImportId[m.import_id] || null;
-          if (!matched) {
-            var fbKey = m.dateNorm + ':' + m.amountMilli;
-            var fbArr = ynabByKey[fbKey];
+          var fuzzyMatched = false;
+          if (matched) {
+            matchedYnabIds.add(matched.id);
+          } else {
+            var fbArr = ynabByKey[m.dateNorm + ':' + m.amountMilli];
             if (fbArr) {
-              var consumed = fallbackConsumed[fbKey] || 0;
-              if (consumed < fbArr.length) {
-                matched = fbArr[consumed];
-                fallbackConsumed[fbKey] = consumed + 1;
+              for (var fi = 0; fi < fbArr.length; fi++) {
+                if (!matchedYnabIds.has(fbArr[fi].id)) {
+                  matched = fbArr[fi];
+                  matchedYnabIds.add(matched.id);
+                  break;
+                }
               }
             }
           }
+          if (!matched && fuzzyDays > 0) {
+            var candidates = ynabByAmount[String(m.amountMilli)];
+            if (candidates) {
+              var best = null, bestDist = Infinity;
+              for (var ci = 0; ci < candidates.length; ci++) {
+                if (matchedYnabIds.has(candidates[ci].id)) continue;
+                var dist = daysBetween(m.dateNorm, candidates[ci].date);
+                if (dist > 0 && dist <= fuzzyDays && dist < bestDist) {
+                  bestDist = dist;
+                  best = candidates[ci];
+                }
+              }
+              if (best) {
+                matched = best;
+                matchedYnabIds.add(matched.id);
+                fuzzyMatched = true;
+              }
+            }
+          }
+          var accion = matched
+            ? (fuzzyMatched ? 'ya existe (YNAB: ' + matched.date + ')' : 'ya existe')
+            : 'crear';
           rows.push({
             fecha: m.dateNorm,
             payee: payee,
             monto: m.amountMilli,
             memo: m.memo || '',
             import_id: m.import_id,
-            accion: matched ? 'ya existe' : 'crear',
+            accion: accion,
             flag_color: matched ? (matched.flag_color || '') : '',
             marcar: ''
           });
@@ -382,9 +454,7 @@
         if (!config.skipMarkNotInBank) {
           var soloEnYNAB = ynabTx.filter(function (t) {
             if (config.skipReconciled && t.cleared === 'reconciled') return false;
-            if (t.import_id) return !bankImportIds.has(t.import_id);
-            var key = t.date + ':' + t.amount;
-            return !bankKeys.has(key);
+            return !matchedYnabIds.has(t.id);
           });
           for (var j = 0; j < soloEnYNAB.length; j++) {
             var s = soloEnYNAB[j];
