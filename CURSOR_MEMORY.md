@@ -35,3 +35,10 @@
 - `soloEnYNAB` detection uses `matchedYnabIds` instead of key-based checks, which is more accurate for 1-to-1 matching.
 - YNAB flag colors: `orange` = fuzzy date correction applied, `red` = transaction in YNAB but not found in bank DOM.
 - Flag priority: existing YNAB flags are never overwritten. Orange/red are only applied when the transaction has no flag yet.
+
+## Cuota Date Adjustment (tarjeta-nacional-facturado)
+
+- For installment transactions (cuota != "01/1"), the bank shows the original purchase date, not the billing date.
+- `adjustDateToCurrentMonth` replaces month/year with the current month/year, keeping the same day.
+- If the day doesn't exist in the current month (e.g., day 31 in February), it clamps to the last day of the month.
+- This ensures YNAB reflects when the money actually leaves (billing cycle), not when the purchase was made.

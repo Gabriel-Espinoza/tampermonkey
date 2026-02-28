@@ -79,16 +79,31 @@
       return (cuota === '01/1') ? '' : 'cuota ' + cuota;
     }
 
+    function adjustDateToCurrentMonth(fechaStr) {
+      var parts = fechaStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!parts) return fechaStr;
+      var day = parseInt(parts[1], 10);
+      var now = new Date();
+      var curMonth = now.getMonth();
+      var curYear = now.getFullYear();
+      var lastDay = new Date(curYear, curMonth + 1, 0).getDate();
+      if (day > lastDay) day = lastDay;
+      var dd = String(day).padStart(2, '0');
+      var mm = String(curMonth + 1).padStart(2, '0');
+      return dd + '/' + mm + '/' + curYear;
+    }
+
     function toNormalizedMovimientos(datos) {
       var out = [];
       for (var i = 0; i < datos.length; i++) {
         var d = datos[i];
+        var isCuota = d.cuota && d.cuota !== '01/1';
         var item = {
-          fecha: d.fecha,
+          fecha: isCuota ? adjustDateToCurrentMonth(d.fecha) : d.fecha,
           movimientos: d.descripcion,
           amountMilli: Lib.parseMilliunits(d.monto, true)
         };
-        if (d.cuota && d.cuota !== '01/1') item.memo = 'cuota ' + d.cuota;
+        if (isCuota) item.memo = 'cuota ' + d.cuota;
         out.push(item);
       }
       return out;
