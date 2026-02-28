@@ -18,14 +18,14 @@
 - `skipMarkNotInBank: true` is used for paginated tables (can't reliably detect "not in bank" from partial DOM).
 - `skipReconciled: true` is used for facturado (non-paginated) to avoid flagging already-verified transactions.
 
-## Matching Logic (3-level: import_id → date:amount → fuzzy date)
+## Matching Logic (two-pass: exact → fuzzy)
 
 - YNAB transactions created via API or file import have `import_id` (e.g. `YNAB:-50000000:2026-01-23:1`).
 - Manually entered YNAB transactions do NOT have `import_id`.
-- Both `buildYNABPreviewRows` and `runSyncYNAB` use 3-level matching:
-  1. **import_id** (exact) — for API-created/imported YNAB transactions.
-  2. **date:amount** (exact) — for manual YNAB entries with correct date.
-  3. **fuzzy date:amount** — for manual YNAB entries where the date is off by up to N days (default 7). Picks the closest date within the window.
+- Both `buildYNABPreviewRows` and `runSyncYNAB` use **two-pass** matching:
+  - **Pass 1 (exact):** For ALL bank transactions, try import_id match, then date:amount exact match. This ensures exact matches are never stolen by fuzzy matches processed earlier in DOM order.
+  - **Pass 2 (fuzzy):** For remaining unmatched transactions, try fuzzy date:amount (same amount, date within N days). Picks the closest date within the window.
+- **Critical lesson:** Single-pass sequential matching (all 3 levels per transaction) causes order-dependent bugs where a fuzzy match can consume a YNAB entry that a later transaction would have matched exactly by date:amount. The two-pass approach prevents this.
 - All levels track consumed YNAB transaction IDs (`matchedYnabIds` Set) to prevent double-matching.
 - Fuzzy matching only applies to YNAB transactions without `import_id` (manual entries).
 - `config.fuzzyDateDays` controls the window (default 7, set to 0 to disable).

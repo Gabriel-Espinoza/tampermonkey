@@ -264,20 +264,33 @@
             ynabByAmount[amtK].push(txn);
           }
         }
-        aCrear = movimientos.filter(function (m) {
-          if (!validMovement(m)) return false;
+        var exactMatched = new Set();
+        for (var mi = 0; mi < movimientos.length; mi++) {
+          var m = movimientos[mi];
+          if (!validMovement(m)) continue;
           var byImport = existingByImportId[m.import_id];
-          if (byImport) { matchedYnabIds.add(byImport.id); return false; }
+          if (byImport) {
+            matchedYnabIds.add(byImport.id);
+            exactMatched.add(mi);
+            continue;
+          }
           var fbArr = ynabByKey[m.dateNorm + ':' + m.amountMilli];
           if (fbArr) {
             for (var fi = 0; fi < fbArr.length; fi++) {
               if (!matchedYnabIds.has(fbArr[fi].id)) {
                 matchedYnabIds.add(fbArr[fi].id);
-                return false;
+                exactMatched.add(mi);
+                break;
               }
             }
           }
-          if (fuzzyDays > 0) {
+        }
+
+        if (fuzzyDays > 0) {
+          for (var mi = 0; mi < movimientos.length; mi++) {
+            if (exactMatched.has(mi)) continue;
+            var m = movimientos[mi];
+            if (!validMovement(m)) continue;
             var candidates = ynabByAmount[String(m.amountMilli)];
             if (candidates) {
               var best = null, bestDist = Infinity;
@@ -291,12 +304,16 @@
               }
               if (best) {
                 matchedYnabIds.add(best.id);
+                exactMatched.add(mi);
                 fuzzyUpdates.push({ id: best.id, newDate: m.dateNorm, existingFlag: best.flag_color || null });
-                return false;
               }
             }
           }
-          return true;
+        }
+
+        aCrear = movimientos.filter(function (m, idx) {
+          if (!validMovement(m)) return false;
+          return !exactMatched.has(idx);
         });
       }
 
@@ -420,26 +437,33 @@
         }
 
         var matchedYnabIds = new Set();
+        var matchResults = [];
+        for (var i = 0; i < movimientos.length; i++) matchResults.push(null);
+
         for (var i = 0; i < movimientos.length; i++) {
           var m = movimientos[i];
-          var payee = (m.movimientos != null ? m.movimientos : m.descripcion) || '(sin descripción)';
           var matched = existingByImportId[m.import_id] || null;
-          var fuzzyMatched = false;
           if (matched) {
             matchedYnabIds.add(matched.id);
-          } else {
-            var fbArr = ynabByKey[m.dateNorm + ':' + m.amountMilli];
-            if (fbArr) {
-              for (var fi = 0; fi < fbArr.length; fi++) {
-                if (!matchedYnabIds.has(fbArr[fi].id)) {
-                  matched = fbArr[fi];
-                  matchedYnabIds.add(matched.id);
-                  break;
-                }
+            matchResults[i] = { matched: matched, fuzzy: false };
+            continue;
+          }
+          var fbArr = ynabByKey[m.dateNorm + ':' + m.amountMilli];
+          if (fbArr) {
+            for (var fi = 0; fi < fbArr.length; fi++) {
+              if (!matchedYnabIds.has(fbArr[fi].id)) {
+                matchedYnabIds.add(fbArr[fi].id);
+                matchResults[i] = { matched: fbArr[fi], fuzzy: false };
+                break;
               }
             }
           }
-          if (!matched && fuzzyDays > 0) {
+        }
+
+        if (fuzzyDays > 0) {
+          for (var i = 0; i < movimientos.length; i++) {
+            if (matchResults[i]) continue;
+            var m = movimientos[i];
             var candidates = ynabByAmount[String(m.amountMilli)];
             if (candidates) {
               var best = null, bestDist = Infinity;
@@ -452,12 +476,19 @@
                 }
               }
               if (best) {
-                matched = best;
-                matchedYnabIds.add(matched.id);
-                fuzzyMatched = true;
+                matchedYnabIds.add(best.id);
+                matchResults[i] = { matched: best, fuzzy: true };
               }
             }
           }
+        }
+
+        for (var i = 0; i < movimientos.length; i++) {
+          var m = movimientos[i];
+          var payee = (m.movimientos != null ? m.movimientos : m.descripcion) || '(sin descripción)';
+          var result = matchResults[i];
+          var matched = result ? result.matched : null;
+          var fuzzyMatched = result ? result.fuzzy : false;
           var accion = matched
             ? (fuzzyMatched ? 'corregir fecha (YNAB: ' + matched.date + ')' : 'ya existe')
             : 'crear';
