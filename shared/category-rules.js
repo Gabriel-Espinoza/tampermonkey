@@ -3,6 +3,8 @@
 
   root.YNABCategoryRules = {
   "exact": {
+    "Supermercado la punt san antonio": "Casa: 🛒 Supermercado",
+    "Segur. falabella rr. santiago": "Casa: 🧾 Cuentas",
     "Mercadopago amasa las condes": "Casa: 🛒 Supermercado",
     "Neat cuentas basicas san felipe": "Casa: 🧾 Cuentas",
     "Restaurant casa orie santiago": "Otros: 🍿 Esparcimiento",
