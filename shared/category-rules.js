@@ -302,123 +302,8 @@
     "zapateria": "Otros: 🛍️ Otras Compras",
     "zara": "Casa: 👖 Cuidado Personal"
   },
-  "generated_at_utc": "2026-02-28T03:03:12+00:00",
+  "generated_at_utc": "2026-02-28T15:40:38+00:00",
   "patterns": [
-    {
-      "category": "Casa: 🚗 Transporte",
-      "type": "startsWith",
-      "value": "administradora"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "almacen"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "antigua"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "apple"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "aramco"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "balcao"
-    },
-    {
-      "category": "Casa: 👖 Cuidado Personal",
-      "type": "startsWith",
-      "value": "bamers"
-    },
-    {
-      "category": "Casa: 👖 Cuidado Personal",
-      "type": "startsWith",
-      "value": "barbizon"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "bariloche"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "belen"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "bernardo"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "blupoint"
-    },
-    {
-      "category": "Otros: 🎁 Gifts",
-      "type": "startsWith",
-      "value": "buscalibre"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "cafe"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "cafeteria"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "canelillo"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "casa"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "castano"
-    },
-    {
-      "category": "Casa: 🚗 Transporte",
-      "type": "startsWith",
-      "value": "central"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "choco"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "cine"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "cinepolis"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "clin"
-    },
     {
       "category": "Salud: 🧑‍⚕️ Médicos",
       "type": "startsWith",
@@ -433,11 +318,6 @@
       "category": "Educación: 🎒 Colegios",
       "type": "startsWith",
       "value": "colegio"
-    },
-    {
-      "category": "Casa: 🧾 Cuentas",
-      "type": "startsWith",
-      "value": "comision"
     },
     {
       "category": "Casa: 🚗 Transporte",
@@ -455,169 +335,9 @@
       "value": "cruz"
     },
     {
-      "category": "Casa: 🚗 Transporte",
-      "type": "startsWith",
-      "value": "dcto"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "dentista"
-    },
-    {
-      "category": "Educación: 🎒 Colegios",
-      "type": "startsWith",
-      "value": "dimeiggs"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "dlocal"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "doremi"
-    },
-    {
-      "category": "Otros: 🎁 Gifts",
-      "type": "startsWith",
-      "value": "easy"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "empanadissima"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "emporio"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "encuadrado"
-    },
-    {
-      "category": "Casa: 👖 Cuidado Personal",
-      "type": "startsWith",
-      "value": "estetica"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "express"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "fabiola"
-    },
-    {
       "category": "Salud: 💊 Farmacia",
       "type": "startsWith",
       "value": "farmacia"
-    },
-    {
-      "category": "Salud: 💊 Farmacia",
-      "type": "startsWith",
-      "value": "farmacias"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "feria"
-    },
-    {
-      "category": "Otros: 🎁 Gifts",
-      "type": "startsWith",
-      "value": "ferreteria"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "flannerys"
-    },
-    {
-      "category": "Casa: 👖 Cuidado Personal",
-      "type": "startsWith",
-      "value": "flores"
-    },
-    {
-      "category": "Casa: 👵 Nana",
-      "type": "startsWith",
-      "value": "flow"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "francalimpieza"
-    },
-    {
-      "category": "Educación: 🎒 Colegios",
-      "type": "startsWith",
-      "value": "galileo"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "grupo"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "heladeria"
-    },
-    {
-      "category": "Casa: 🧾 Cuentas",
-      "type": "startsWith",
-      "value": "help"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "hernan"
-    },
-    {
-      "category": "Casa: 🏠 Vivienda",
-      "type": "startsWith",
-      "value": "ikea"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "importadora"
-    },
-    {
-      "category": "Casa: 🧾 Cuentas",
-      "type": "startsWith",
-      "value": "impuestos"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "integramedica"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "iopa"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "johnny"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "juan"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "jugueria"
     },
     {
       "category": "Casa: 🛒 Supermercado",
@@ -625,59 +345,9 @@
       "value": "jumbo"
     },
     {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "justo"
-    },
-    {
       "category": "Otros: 🍿 Esparcimiento",
       "type": "startsWith",
       "value": "k099"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "kclub"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "kios"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "kiosko"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "kioskos"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "laboratorio"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "laik"
-    },
-    {
-      "category": "Educación: 🎒 Colegios",
-      "type": "startsWith",
-      "value": "lapiz"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "latam"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "lenovo"
     },
     {
       "category": "Casa: 🛒 Supermercado",
@@ -690,114 +360,9 @@
       "value": "liga"
     },
     {
-      "category": "Otros: 🎁 Gifts",
-      "type": "startsWith",
-      "value": "limonada"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "little"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "macerado"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "make"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "mall"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "mamut"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "mayan"
-    },
-    {
-      "category": "Salud: 💊 Farmacia",
-      "type": "startsWith",
-      "value": "meki"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "merpagoalimentoschia"
-    },
-    {
-      "category": "Salud: 💊 Farmacia",
-      "type": "startsWith",
-      "value": "merpagofarmexspa"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "merpagofernandodoro"
-    },
-    {
-      "category": "Otros: 🎁 Gifts",
-      "type": "startsWith",
-      "value": "merpagogrupoaxo"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "merpagoventaalpormeno"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "mirax"
-    },
-    {
-      "category": "Casa: 🚗 Transporte",
-      "type": "startsWith",
-      "value": "municipalidad"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "museo"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "mylutecno"
-    },
-    {
       "category": "Casa: 🧾 Cuentas",
       "type": "startsWith",
       "value": "neat"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "nintendo"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "nueva"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "orld"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "oxxo"
     },
     {
       "category": "Casa: 🛒 Supermercado",
@@ -805,49 +370,14 @@
       "value": "panaderia"
     },
     {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "paradiso"
-    },
-    {
       "category": "Otros: 🍿 Esparcimiento",
       "type": "startsWith",
       "value": "parque"
     },
     {
-      "category": "Casa: 🚗 Transporte",
-      "type": "startsWith",
-      "value": "pasajebus"
-    },
-    {
-      "category": "Educación: 🎒 Colegios",
-      "type": "startsWith",
-      "value": "paycwps"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "payscan"
-    },
-    {
-      "category": "Casa: 👖 Cuidado Personal",
-      "type": "startsWith",
-      "value": "podovita"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "restaurant"
-    },
-    {
       "category": "Casa: 👖 Cuidado Personal",
       "type": "startsWith",
       "value": "ripley"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "rosario"
     },
     {
       "category": "Casa: 🚗 Transporte",
@@ -860,99 +390,14 @@
       "value": "salcobrand"
     },
     {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "salud"
-    },
-    {
       "category": "Casa: 🛒 Supermercado",
       "type": "startsWith",
       "value": "santa"
     },
     {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "sbarro"
-    },
-    {
-      "category": "Inversiones y Ahorro: 🏢 Departamento",
-      "type": "startsWith",
-      "value": "segur"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "servicios"
-    },
-    {
-      "category": "Casa: 👖 Cuidado Personal",
-      "type": "startsWith",
-      "value": "skechers"
-    },
-    {
-      "category": "Casa: 🏠 Vivienda",
-      "type": "startsWith",
-      "value": "sodimac"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "spid"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "starbucks"
-    },
-    {
       "category": "Casa: 🛒 Supermercado",
       "type": "startsWith",
       "value": "strip"
-    },
-    {
-      "category": "Otros: 🎁 Gifts",
-      "type": "startsWith",
-      "value": "sumup"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "supermercado"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "sushi"
-    },
-    {
-      "category": "Casa: 🚗 Transporte",
-      "type": "startsWith",
-      "value": "territoria"
-    },
-    {
-      "category": "Educación: 🎒 Colegios",
-      "type": "startsWith",
-      "value": "tiendas"
-    },
-    {
-      "category": "Otros: 🍽️ Almuerzo Trabajo",
-      "type": "startsWith",
-      "value": "tobalaba"
-    },
-    {
-      "category": "Salud: 🧑‍⚕️ Médicos",
-      "type": "startsWith",
-      "value": "toma"
-    },
-    {
-      "category": "Educación: 🎒 Colegios",
-      "type": "startsWith",
-      "value": "trebo"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "turismo"
     },
     {
       "category": "Casa: 🛒 Supermercado",
@@ -961,28 +406,8 @@
     },
     {
       "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "vendomatica"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "startsWith",
-      "value": "wendy"
-    },
-    {
-      "category": "Otros: 🎁 Gifts",
-      "type": "startsWith",
-      "value": "western"
-    },
-    {
-      "category": "Otros: 🛍️ Otras Compras",
-      "type": "startsWith",
-      "value": "zapateria"
-    },
-    {
-      "category": "Casa: 👖 Cuidado Personal",
-      "type": "startsWith",
-      "value": "zara"
+      "type": "contains",
+      "value": "almacen"
     },
     {
       "category": "Casa: 🚗 Transporte",
@@ -993,6 +418,11 @@
       "category": "Casa: 🧾 Cuentas",
       "type": "contains",
       "value": "basicas"
+    },
+    {
+      "category": "Otros: 🍿 Esparcimiento",
+      "type": "contains",
+      "value": "choco"
     },
     {
       "category": "Otros: 🍿 Esparcimiento",
@@ -1038,6 +468,11 @@
       "category": "Casa: 🚗 Transporte",
       "type": "contains",
       "value": "estacionamientos"
+    },
+    {
+      "category": "Salud: 💊 Farmacia",
+      "type": "contains",
+      "value": "farmacias"
     },
     {
       "category": "Casa: 🛒 Supermercado",

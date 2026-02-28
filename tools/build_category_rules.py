@@ -128,6 +128,7 @@ def build_patterns(exact: dict[str, str]) -> list[dict[str, str]]:
     prefix_to_category_counts: dict[str, Counter] = defaultdict(Counter)
     prefix_to_payees: dict[str, set[str]] = defaultdict(set)
     token_to_category_counts: dict[str, Counter] = defaultdict(Counter)
+    token_to_payees: dict[str, set[str]] = defaultdict(set)
 
     for payee_norm, category in exact.items():
         parts = payee_norm.split()
@@ -144,11 +145,15 @@ def build_patterns(exact: dict[str, str]) -> list[dict[str, str]]:
             if len(token) < MIN_TOKEN_LEN or token in TOKEN_STOPWORDS or token.isdigit():
                 continue
             token_to_category_counts[token][category] += 1
+            token_to_payees[token].add(payee_norm)
 
     for prefix, cat_counter in sorted(prefix_to_category_counts.items()):
         payee_count = len(prefix_to_payees[prefix])
         total = sum(cat_counter.values())
         if payee_count < MIN_PAYEE_COUNT or total < MIN_PAYEE_COUNT:
+            continue
+        # When only 1 payee matches, rely on exact rule instead of a broad pattern
+        if payee_count == 1:
             continue
         top_category, top_count = cat_counter.most_common(1)[0]
         if (top_count / total) >= CONFIDENCE_STARTS_WITH:
@@ -161,8 +166,12 @@ def build_patterns(exact: dict[str, str]) -> list[dict[str, str]]:
             )
 
     for token, cat_counter in sorted(token_to_category_counts.items()):
+        payee_count = len(token_to_payees[token])
         total = sum(cat_counter.values())
         if total < MIN_OCCURRENCES_CONTAINS:
+            continue
+        # When only 1 payee matches, rely on exact rule instead of a broad pattern
+        if payee_count == 1:
             continue
         top_category, top_count = cat_counter.most_common(1)[0]
         if (top_count / total) >= CONFIDENCE_CONTAINS:
