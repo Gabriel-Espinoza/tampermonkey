@@ -80,6 +80,9 @@ def fetch_ynab_categories(access_token: str, budget_id: str) -> list[str]:
     try:
         with urllib.request.urlopen(req, timeout=20, context=secure_context) as res:
             payload = json.loads(res.read().decode("utf-8"))
+    except urllib.error.HTTPError as err:
+        body = err.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"YNAB API error {err.code}: {body}") from err
     except urllib.error.URLError as err:
         reason = str(getattr(err, "reason", err))
         if "CERTIFICATE_VERIFY_FAILED" not in reason:
@@ -88,9 +91,6 @@ def fetch_ynab_categories(access_token: str, budget_id: str) -> list[str]:
         # Fallback is intentionally scoped to this request.
         with urllib.request.urlopen(req, timeout=20, context=insecure_context) as res:
             payload = json.loads(res.read().decode("utf-8"))
-    except urllib.error.HTTPError as err:
-        body = err.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"YNAB API error {err.code}: {body}") from err
 
     groups = payload.get("data", {}).get("category_groups", [])
     categories: list[str] = []

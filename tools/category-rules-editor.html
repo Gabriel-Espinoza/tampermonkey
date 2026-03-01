@@ -54,8 +54,8 @@
         border: 1px solid var(--line);
         background: #252b39;
         color: var(--text);
-        border-radius: 8px;
-        padding: 7px 10px;
+        border-radius: 6px;
+        padding: 4px 8px;
         cursor: pointer;
       }
       button:hover {
@@ -70,10 +70,10 @@
         width: 100%;
         box-sizing: border-box;
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: 6px;
         background: #0f141d;
         color: var(--text);
-        padding: 7px 9px;
+        padding: 4px 6px;
       }
       textarea {
         min-height: 120px;
@@ -103,6 +103,20 @@
         font-size: 12px;
         color: var(--muted);
       }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .tab-btn.active {
+        background: #3a4661;
+      }
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: block;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -111,7 +125,7 @@
       td {
         border-top: 1px solid var(--line);
         vertical-align: middle;
-        padding: 8px 6px;
+        padding: 3px 4px;
       }
       th {
         text-align: left;
@@ -128,26 +142,44 @@
         white-space: nowrap;
       }
       .row-actions button {
-        padding: 4px 8px;
-        border-radius: 6px;
+        padding: 2px 6px;
+        border-radius: 4px;
       }
       .invalid {
         border-color: var(--bad) !important;
+      }
+      .grid-cell {
+        min-height: 24px;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        padding: 2px 6px;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .grid-cell:focus {
+        outline: none;
+        border-color: #5c6bc0;
+        background: #0f141d;
+      }
+      .grid-cell.placeholder {
+        color: var(--muted);
       }
       .category-cell {
         position: relative;
       }
       .combo-wrap {
         display: flex;
-        gap: 4px;
+        gap: 2px;
         align-items: center;
       }
       .combo-wrap input {
         flex: 1;
       }
       .combo-toggle {
-        min-width: 32px;
-        padding: 7px 8px;
+        min-width: 24px;
+        padding: 2px 5px;
         line-height: 1;
       }
       .combo-menu {
@@ -170,7 +202,7 @@
         background: transparent;
         text-align: left;
         border-radius: 0;
-        padding: 8px 10px;
+        padding: 4px 8px;
       }
       .combo-item:last-child {
         border-bottom: 0;
@@ -180,6 +212,9 @@
       }
       .combo-item.active {
         background: #2f3747;
+      }
+      .cell-editor {
+        width: 100%;
       }
       .combo-empty {
         padding: 8px 10px;
@@ -251,7 +286,13 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="tabs panel">
+        <button class="tab-btn active" data-tab="exact" id="tabExactBtn">Exact</button>
+        <button class="tab-btn" data-tab="pattern" id="tabPatternBtn">Patterns</button>
+        <button class="tab-btn" data-tab="skip" id="tabSkipBtn">Skip</button>
+      </div>
+
+      <div class="panel tab-panel active" id="tabExactPanel" data-tab-panel="exact">
         <div class="section-head">
           <h2>Matches exactos</h2>
           <div class="toolbar-row">
@@ -276,7 +317,7 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel tab-panel" id="tabPatternPanel" data-tab-panel="pattern">
         <div class="section-head">
           <h2>Patterns</h2>
           <div class="toolbar-row">
@@ -288,9 +329,9 @@
           <thead>
             <tr>
               <th class="chk"><input id="patternSelectAll" type="checkbox" /></th>
-              <th>Categoría (solo YNAB)</th>
               <th>Tipo</th>
               <th>Valor</th>
+              <th>Categoría (solo YNAB)</th>
               <th>Orden</th>
             </tr>
           </thead>
@@ -298,7 +339,7 @@
         </table>
       </div>
 
-      <div class="panel">
+      <div class="panel tab-panel" id="tabSkipPanel" data-tab-panel="skip">
         <div class="section-head">
           <h2>Skip</h2>
           <div class="toolbar-row">
@@ -323,7 +364,7 @@
           <li>Ejecuta <code>python3 tools/build_category_rules_editor.py</code> para refrescar categorías desde YNAB.</li>
           <li>Carga <code>shared/category-rules.js</code> con el botón superior.</li>
           <li>Edita Exact / Patterns / Skip.</li>
-          <li>Teclado: <code>Enter</code>/<code>Shift+Enter</code> sube/baja filas, <code>Ctrl+flechas</code> navega celdas, <code>Tab</code> respeta salto entre filas.</li>
+          <li>Teclado: flechas navegan celdas; <code>Enter</code> entra/guarda edición; <code>Esc</code> cancela; <code>Tab</code> avanza entre celdas; <code>Shift+←/→</code> cambia de pestaña.</li>
           <li>Exporta con <code>Descargar .js</code> y reemplaza <code>shared/category-rules.js</code>.</li>
         </ol>
       </details>
@@ -377,12 +418,14 @@
         exactRows: [],
         patterns: [],
         skip: [],
+        activeTab: 'exact',
         sourceFile: '',
         generatedAtUtc: '',
         categories: [],
         categoriesLookup: new Map(),
         activeMenuKey: null,
         activeMenuHighlight: -1,
+        editor: null,
       };
 
       const el = {
@@ -414,6 +457,12 @@
         pasteArea: document.getElementById('pasteArea'),
         closePasteBtn: document.getElementById('closePasteBtn'),
         applyPasteBtn: document.getElementById('applyPasteBtn'),
+        tabExactBtn: document.getElementById('tabExactBtn'),
+        tabPatternBtn: document.getElementById('tabPatternBtn'),
+        tabSkipBtn: document.getElementById('tabSkipBtn'),
+        tabExactPanel: document.getElementById('tabExactPanel'),
+        tabPatternPanel: document.getElementById('tabPatternPanel'),
+        tabSkipPanel: document.getElementById('tabSkipPanel'),
       };
 
       function setStatus(message, kind = 'info') {
@@ -490,81 +539,125 @@
         state.generatedAtUtc = String(rules.generated_at_utc || '');
       }
 
+      function isEditingCell(kind, idx) {
+        return !!state.editor && state.editor.kind === kind && state.editor.idx === idx;
+      }
+
+      function isCategoryKind(kind) {
+        return kind === 'exact-category' || kind === 'pattern-category';
+      }
+
+      function isTypeKind(kind) {
+        return kind === 'pattern-type';
+      }
+
+      function getCellValue(kind, idx) {
+        if (kind === 'exact-payee') return state.exactRows[idx].payee;
+        if (kind === 'exact-category') return state.exactRows[idx].category;
+        if (kind === 'pattern-category') return state.patterns[idx].category;
+        if (kind === 'pattern-type') return state.patterns[idx].type;
+        if (kind === 'pattern-value') return state.patterns[idx].value;
+        if (kind === 'skip-value') return state.skip[idx].value;
+        return '';
+      }
+
+      function setCellValue(kind, idx, value) {
+        if (kind === 'exact-payee') state.exactRows[idx].payee = value;
+        if (kind === 'exact-category') state.exactRows[idx].category = value;
+        if (kind === 'pattern-category') state.patterns[idx].category = value;
+        if (kind === 'pattern-type') state.patterns[idx].type = value === 'startsWith' ? 'startsWith' : 'contains';
+        if (kind === 'pattern-value') state.patterns[idx].value = value;
+        if (kind === 'skip-value') state.skip[idx].value = value;
+      }
+
+      function renderViewCell(kind, idx, value) {
+        const text = String(value || '');
+        const shown = text || ' ';
+        const placeholderClass = text ? '' : 'placeholder';
+        return `<div class="grid-cell ${placeholderClass}" tabindex="0" data-kind="${kind}" data-idx="${idx}">${escapeHtml(shown)}</div>`;
+      }
+
+      function renderEditorCell(kind, idx, value) {
+        if (isTypeKind(kind)) {
+          return `
+            <select id="activeCellEditor" class="cell-editor" data-kind="editor-type" data-editor-kind="${kind}" data-idx="${idx}">
+              <option value="startsWith" ${value === 'startsWith' ? 'selected' : ''}>startsWith</option>
+              <option value="contains" ${value === 'contains' ? 'selected' : ''}>contains</option>
+            </select>
+          `;
+        }
+        if (isCategoryKind(kind)) {
+          return `
+            <div class="category-cell">
+              <div class="combo-wrap">
+                <input
+                  id="activeCellEditor"
+                  class="cell-editor ${value && !canonicalCategory(value) ? 'invalid' : ''}"
+                  type="text"
+                  autocomplete="off"
+                  data-kind="editor-category"
+                  data-editor-kind="${kind}"
+                  data-idx="${idx}"
+                  value="${escapeHtml(value)}"
+                />
+                <button type="button" class="combo-toggle" data-kind="combo-toggle-editor" data-editor-kind="${kind}" data-idx="${idx}" title="Mostrar categorías">▾</button>
+              </div>
+              <div id="categoryEditorMenu" class="combo-menu" hidden></div>
+            </div>
+          `;
+        }
+        return `
+          <input
+            id="activeCellEditor"
+            class="cell-editor"
+            type="text"
+            data-kind="editor-text"
+            data-editor-kind="${kind}"
+            data-idx="${idx}"
+            value="${escapeHtml(value)}"
+          />
+        `;
+      }
+
+      function renderCell(kind, idx, value) {
+        if (isEditingCell(kind, idx)) return renderEditorCell(kind, idx, value);
+        return renderViewCell(kind, idx, value);
+      }
+
       function renderExactRows() {
         el.exactTbody.innerHTML = state.exactRows
-          .map((row, idx) => {
-            const isValidCategory = !row.category || !!canonicalCategory(row.category);
-            return `
-              <tr>
-                <td class="chk">
-                  <input type="checkbox" data-kind="exact-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
-                </td>
-                <td>
-                  <input type="text" data-kind="exact-payee" data-idx="${idx}" value="${escapeHtml(row.payee)}" />
-                </td>
-                <td>
-                  <div class="category-cell" data-cell-kind="exact-category" data-idx="${idx}">
-                    <div class="combo-wrap">
-                      <input
-                        type="text"
-                        list="categoryOptions"
-                        data-kind="exact-category"
-                        data-idx="${idx}"
-                        value="${escapeHtml(row.category)}"
-                        class="${isValidCategory ? '' : 'invalid'}"
-                        autocomplete="off"
-                      />
-                      <button type="button" class="combo-toggle" data-kind="combo-toggle" data-target-kind="exact-category" data-idx="${idx}" title="Mostrar categorías">▾</button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `;
-          })
+          .map(
+            (row, idx) => `
+            <tr>
+              <td class="chk">
+                <input type="checkbox" data-kind="exact-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
+              </td>
+              <td>${renderCell('exact-payee', idx, row.payee)}</td>
+              <td>${renderCell('exact-category', idx, row.category)}</td>
+            </tr>
+          `
+          )
           .join('');
       }
 
       function renderPatternsRows() {
         el.patternsTbody.innerHTML = state.patterns
-          .map((row, idx) => {
-            const isValidCategory = !row.category || !!canonicalCategory(row.category);
-            return `
-              <tr>
-                <td class="chk">
-                  <input type="checkbox" data-kind="pattern-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
-                </td>
-                <td>
-                  <div class="category-cell" data-cell-kind="pattern-category" data-idx="${idx}">
-                    <div class="combo-wrap">
-                      <input
-                        type="text"
-                        list="categoryOptions"
-                        data-kind="pattern-category"
-                        data-idx="${idx}"
-                        value="${escapeHtml(row.category)}"
-                        class="${isValidCategory ? '' : 'invalid'}"
-                        autocomplete="off"
-                      />
-                      <button type="button" class="combo-toggle" data-kind="combo-toggle" data-target-kind="pattern-category" data-idx="${idx}" title="Mostrar categorías">▾</button>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <select data-kind="pattern-type" data-idx="${idx}">
-                    <option value="startsWith" ${row.type === 'startsWith' ? 'selected' : ''}>startsWith</option>
-                    <option value="contains" ${row.type === 'contains' ? 'selected' : ''}>contains</option>
-                  </select>
-                </td>
-                <td>
-                  <input type="text" data-kind="pattern-value" data-idx="${idx}" value="${escapeHtml(row.value)}" />
-                </td>
-                <td class="actions row-actions">
-                  <button data-kind="pattern-up" data-idx="${idx}" title="Subir">↑</button>
-                  <button data-kind="pattern-down" data-idx="${idx}" title="Bajar">↓</button>
-                </td>
-              </tr>
-            `;
-          })
+          .map(
+            (row, idx) => `
+            <tr>
+              <td class="chk">
+                <input type="checkbox" data-kind="pattern-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
+              </td>
+              <td>${renderCell('pattern-type', idx, row.type)}</td>
+              <td>${renderCell('pattern-value', idx, row.value)}</td>
+              <td>${renderCell('pattern-category', idx, row.category)}</td>
+              <td class="actions row-actions">
+                <button data-kind="pattern-up" data-idx="${idx}" title="Subir">↑</button>
+                <button data-kind="pattern-down" data-idx="${idx}" title="Bajar">↓</button>
+              </td>
+            </tr>
+          `
+          )
           .join('');
       }
 
@@ -576,13 +669,20 @@
               <td class="chk">
                 <input type="checkbox" data-kind="skip-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
               </td>
-              <td>
-                <input type="text" data-kind="skip-value" data-idx="${idx}" value="${escapeHtml(row.value)}" />
-              </td>
+              <td>${renderCell('skip-value', idx, row.value)}</td>
             </tr>
           `
           )
           .join('');
+      }
+
+      function focusEditorControl() {
+        const editor = document.getElementById('activeCellEditor');
+        if (!editor) return;
+        editor.focus();
+        if (editor.tagName === 'INPUT' && typeof editor.select === 'function') {
+          editor.select();
+        }
       }
 
       function renderAll() {
@@ -592,6 +692,12 @@
         el.sourceFileInput.value = state.sourceFile;
         el.generatedAtInput.value = state.generatedAtUtc;
         updateCounts();
+        if (state.editor) {
+          focusEditorControl();
+          if (isCategoryKind(state.editor.kind)) {
+            renderActiveCategoryMenu();
+          }
+        }
       }
 
       function categoryMatchesFilter(category, filterText) {
@@ -599,25 +705,13 @@
       }
 
       function renderActiveCategoryMenu() {
-        if (!state.activeMenuKey) return;
-        const [kind, idxText] = state.activeMenuKey.split(':');
-        const idx = Number(idxText);
-        if (Number.isNaN(idx)) return;
-        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
-        if (!cell) {
-          state.activeMenuKey = null;
-          state.activeMenuHighlight = -1;
-          return;
-        }
-        let menu = cell.querySelector('.combo-menu');
-        if (!menu) {
-          menu = document.createElement('div');
-          menu.className = 'combo-menu';
-          cell.appendChild(menu);
-        }
-        const input = cell.querySelector(`[data-kind="${kind}"][data-idx="${idx}"]`);
-        if (!menu || !input) return;
+        if (!state.editor || !isCategoryKind(state.editor.kind) || !state.activeMenuKey) return;
+        const input = document.getElementById('activeCellEditor');
+        const menu = document.getElementById('categoryEditorMenu');
+        if (!input || !menu) return;
+
         const filtered = state.categories.filter((c) => categoryMatchesFilter(c, input.value));
+        menu.hidden = false;
         if (!filtered.length) {
           state.activeMenuHighlight = -1;
           menu.innerHTML = '<div class="combo-empty">Sin coincidencias</div>';
@@ -629,75 +723,112 @@
         menu.innerHTML = filtered
           .map(
             (c, menuIdx) =>
-              `<button type="button" class="combo-item ${menuIdx === state.activeMenuHighlight ? 'active' : ''}" data-kind="combo-option" data-target-kind="${kind}" data-idx="${idx}" data-menu-idx="${menuIdx}" data-value="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+              `<button type="button" class="combo-item ${menuIdx === state.activeMenuHighlight ? 'active' : ''}" data-kind="combo-option" data-value="${escapeHtml(c)}">${escapeHtml(c)}</button>`
           )
           .join('');
       }
 
       function openCategoryMenu(kind, idx) {
-        const nextKey = `${kind}:${idx}`;
-        if (state.activeMenuKey !== nextKey) {
-          closeCategoryMenu();
-          state.activeMenuKey = nextKey;
-          state.activeMenuHighlight = 0;
-        }
+        state.activeMenuKey = `${kind}:${idx}`;
+        if (state.activeMenuHighlight < 0) state.activeMenuHighlight = 0;
         renderActiveCategoryMenu();
       }
 
       function closeCategoryMenu() {
-        if (!state.activeMenuKey) return;
-        const [kind, idxText] = state.activeMenuKey.split(':');
-        const idx = Number(idxText);
-        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
-        if (cell) {
-          const menu = cell.querySelector('.combo-menu');
-          if (menu) menu.remove();
-        }
         state.activeMenuKey = null;
         state.activeMenuHighlight = -1;
+        const menu = document.getElementById('categoryEditorMenu');
+        if (menu) {
+          menu.hidden = true;
+          menu.innerHTML = '';
+        }
       }
 
       function applyCategorySelection(kind, idx, value) {
-        if (kind === 'exact-category') state.exactRows[idx].category = value;
-        if (kind === 'pattern-category') state.patterns[idx].category = value;
-        const input = document.querySelector(`[data-kind="${kind}"][data-idx="${idx}"]`);
-        if (input) {
-          input.value = value;
-          input.classList.remove('invalid');
-        }
+        setCellValue(kind, idx, value);
       }
 
       function pickHighlightedCategory(kind, idx) {
-        const key = `${kind}:${idx}`;
-        if (state.activeMenuKey !== key) return false;
-        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
-        if (!cell) return false;
-        const items = Array.from(cell.querySelectorAll('[data-kind="combo-option"]'));
+        if (!state.editor || state.editor.kind !== kind || state.editor.idx !== idx) return false;
+        const menu = document.getElementById('categoryEditorMenu');
+        if (!menu || menu.hidden) return false;
+        const items = Array.from(menu.querySelectorAll('[data-kind="combo-option"]'));
         if (!items.length) return false;
         const menuIndex = Math.max(0, Math.min(state.activeMenuHighlight, items.length - 1));
         const option = items[menuIndex];
         const value = option.dataset.value || '';
         if (!value) return false;
         applyCategorySelection(kind, idx, value);
-        closeCategoryMenu();
-        const input = document.querySelector(`[data-kind="${kind}"][data-idx="${idx}"]`);
-        if (input) input.focus();
         return true;
       }
 
       function moveCategoryHighlight(kind, idx, delta) {
-        const key = `${kind}:${idx}`;
-        if (state.activeMenuKey !== key) {
-          openCategoryMenu(kind, idx);
-          return;
-        }
-        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
-        if (!cell) return;
-        const options = cell.querySelectorAll('[data-kind="combo-option"]');
+        if (!state.editor || state.editor.kind !== kind || state.editor.idx !== idx) return;
+        openCategoryMenu(kind, idx);
+        const menu = document.getElementById('categoryEditorMenu');
+        if (!menu) return;
+        const options = menu.querySelectorAll('[data-kind="combo-option"]');
         if (!options.length) return;
         const max = options.length - 1;
         state.activeMenuHighlight = Math.max(0, Math.min(max, state.activeMenuHighlight + delta));
         renderActiveCategoryMenu();
+      }
+
+      function startEditCell(kind, idx) {
+        if (state.editor && state.editor.kind === kind && state.editor.idx === idx) return;
+        state.editor = {
+          kind,
+          idx,
+          originalValue: getCellValue(kind, idx),
+        };
+        state.activeMenuHighlight = 0;
+        if (isCategoryKind(kind)) {
+          state.activeMenuKey = `${kind}:${idx}`;
+        } else {
+          closeCategoryMenu();
+        }
+        renderAll();
+      }
+
+      function cancelEditCell() {
+        if (!state.editor) return;
+        const { kind, idx } = state.editor;
+        closeCategoryMenu();
+        state.editor = null;
+        renderAll();
+        focusGridCell(kind, idx);
+      }
+
+      function commitEditCell() {
+        if (!state.editor) return true;
+        const { kind, idx, originalValue } = state.editor;
+        const editor = document.getElementById('activeCellEditor');
+        if (!editor) return false;
+        let draft = editor.value;
+        if (isTypeKind(kind)) draft = draft === 'startsWith' ? 'startsWith' : 'contains';
+
+        if (isCategoryKind(kind)) {
+          const picked = pickHighlightedCategory(kind, idx);
+          if (picked) {
+            draft = getCellValue(kind, idx);
+          } else {
+            const canonical = canonicalCategory(draft);
+            if (!canonical) {
+              editor.classList.add('invalid');
+              setStatus(`Categoría inválida: "${draft}"`, 'bad');
+              return false;
+            }
+            draft = canonical;
+          }
+        }
+
+        setCellValue(kind, idx, draft);
+        closeCategoryMenu();
+        state.editor = null;
+        renderAll();
+        focusGridCell(kind, idx);
+        if (String(draft) !== String(originalValue)) setStatus('Cambio aplicado.', 'ok');
+        return true;
       }
 
       function resetSelections(kind) {
@@ -712,6 +843,57 @@
         if (kind === 'pattern') state.patterns = state.patterns.filter((r) => !r.selected);
         if (kind === 'skip') state.skip = state.skip.filter((r) => !r.selected);
         renderAll();
+      }
+
+      function toggleRowSelection(kind, idx) {
+        if (kind.startsWith('exact-')) {
+          if (!state.exactRows[idx]) return false;
+          state.exactRows[idx].selected = !state.exactRows[idx].selected;
+          renderAll();
+          focusGridCell(kind, idx);
+          return true;
+        }
+        if (kind.startsWith('pattern-')) {
+          if (!state.patterns[idx]) return false;
+          state.patterns[idx].selected = !state.patterns[idx].selected;
+          renderAll();
+          focusGridCell(kind, idx);
+          return true;
+        }
+        if (kind.startsWith('skip-')) {
+          if (!state.skip[idx]) return false;
+          state.skip[idx].selected = !state.skip[idx].selected;
+          renderAll();
+          focusGridCell(kind, idx);
+          return true;
+        }
+        return false;
+      }
+
+      function deleteRowAt(kind, idx) {
+        let nextLen = 0;
+        if (kind.startsWith('exact-')) {
+          if (!state.exactRows[idx]) return false;
+          state.exactRows.splice(idx, 1);
+          nextLen = state.exactRows.length;
+        } else if (kind.startsWith('pattern-')) {
+          if (!state.patterns[idx]) return false;
+          state.patterns.splice(idx, 1);
+          nextLen = state.patterns.length;
+        } else if (kind.startsWith('skip-')) {
+          if (!state.skip[idx]) return false;
+          state.skip.splice(idx, 1);
+          nextLen = state.skip.length;
+        } else {
+          return false;
+        }
+
+        renderAll();
+        if (nextLen > 0) {
+          const nextIdx = Math.min(idx, nextLen - 1);
+          focusGridCell(kind, nextIdx);
+        }
+        return true;
       }
 
       function parseRulesObjectFromText(text) {
@@ -879,7 +1061,7 @@
         if (kind === 'pattern-category' || kind === 'pattern-type' || kind === 'pattern-value') {
           return {
             grid: 'pattern',
-            kinds: ['pattern-category', 'pattern-type', 'pattern-value'],
+            kinds: ['pattern-type', 'pattern-value', 'pattern-category'],
             rows: state.patterns.length,
           };
         }
@@ -894,14 +1076,52 @@
       }
 
       function focusGridCell(kind, rowIndex) {
-        const selector = `[data-kind="${kind}"][data-idx="${rowIndex}"]`;
+        const selector = `.tab-panel.active .grid-cell[data-kind="${kind}"][data-idx="${rowIndex}"]`;
         const next = document.querySelector(selector);
         if (!next) return false;
         next.focus();
-        if (typeof next.select === 'function' && next.tagName === 'INPUT') {
-          next.select();
-        }
         return true;
+      }
+
+      function tabOrder() {
+        return ['exact', 'pattern', 'skip'];
+      }
+
+      function firstFocusableCellForTab(tabId) {
+        const tabPanel = document.querySelector(`.tab-panel[data-tab-panel="${tabId}"]`);
+        if (!tabPanel) return null;
+        return tabPanel.querySelector('.grid-cell');
+      }
+
+      function setActiveTab(tabId, options = {}) {
+        const { focusCell = true } = options;
+        if (!tabOrder().includes(tabId)) return;
+        state.activeTab = tabId;
+
+        const buttons = [el.tabExactBtn, el.tabPatternBtn, el.tabSkipBtn];
+        buttons.forEach((btn) => {
+          if (!btn) return;
+          btn.classList.toggle('active', btn.dataset.tab === tabId);
+        });
+
+        const panels = [el.tabExactPanel, el.tabPatternPanel, el.tabSkipPanel];
+        panels.forEach((panel) => {
+          if (!panel) return;
+          panel.classList.toggle('active', panel.dataset.tabPanel === tabId);
+        });
+
+        if (focusCell) {
+          const firstCell = firstFocusableCellForTab(tabId);
+          if (firstCell) firstCell.focus();
+        }
+      }
+
+      function switchTabByDelta(delta) {
+        const order = tabOrder();
+        const current = order.indexOf(state.activeTab);
+        const baseIndex = current === -1 ? 0 : current;
+        const next = (baseIndex + delta + order.length) % order.length;
+        setActiveTab(order[next], { focusCell: true });
       }
 
       function moveGridFocus(currentKind, currentRow, rowDelta, colDelta) {
@@ -926,7 +1146,37 @@
         return focusGridCell(cfg.kinds[targetCol], targetRow);
       }
 
+      function getVisibleGridCells() {
+        const cells = Array.from(document.querySelectorAll('.tab-panel.active .grid-cell'));
+        return cells.filter((cell) => {
+          const rect = cell.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+        });
+      }
+
+      function moveFocusByPage(direction) {
+        const scrollAmount = Math.floor(window.innerHeight * 0.9) * (direction === 'down' ? 1 : -1);
+        window.scrollBy(0, scrollAmount);
+        requestAnimationFrame(() => {
+          const visible = getVisibleGridCells();
+          if (!visible.length) return;
+          const target = direction === 'down' ? visible[0] : visible[visible.length - 1];
+          target.focus();
+        });
+      }
+
       function bindEvents() {
+        [el.tabExactBtn, el.tabPatternBtn, el.tabSkipBtn].forEach((btn) => {
+          if (!btn) return;
+          btn.addEventListener('click', () => {
+            if (state.editor) {
+              const ok = commitEditCell();
+              if (!ok) return;
+            }
+            setActiveTab(btn.dataset.tab, { focusCell: true });
+          });
+        });
+
         el.loadFileBtn.addEventListener('click', () => el.fileInput.click());
         el.fileInput.addEventListener('change', async (event) => {
           const [file] = event.target.files || [];
@@ -1052,119 +1302,50 @@
           renderAll();
         });
 
-        document.body.addEventListener('input', (event) => {
-          const target = event.target;
-          const kind = target.dataset.kind;
-          const idx = Number(target.dataset.idx);
-          if (!kind || Number.isNaN(idx)) return;
-
-          if (kind === 'exact-payee') state.exactRows[idx].payee = target.value;
-          if (kind === 'exact-category') {
-            state.exactRows[idx].category = target.value;
-            state.activeMenuHighlight = 0;
-            openCategoryMenu(kind, idx);
-          }
-          if (kind === 'pattern-category') {
-            state.patterns[idx].category = target.value;
-            state.activeMenuHighlight = 0;
-            openCategoryMenu(kind, idx);
-          }
-          if (kind === 'pattern-value') state.patterns[idx].value = target.value;
-          if (kind === 'skip-value') state.skip[idx].value = target.value;
-        });
-
-        document.body.addEventListener('change', (event) => {
-          const target = event.target;
-          const kind = target.dataset.kind;
-          const idx = Number(target.dataset.idx);
-          if (!kind || Number.isNaN(idx)) return;
-
-          if (kind === 'exact-select') state.exactRows[idx].selected = target.checked;
-          if (kind === 'pattern-select') state.patterns[idx].selected = target.checked;
-          if (kind === 'skip-select') state.skip[idx].selected = target.checked;
-          if (kind === 'pattern-type') {
-            state.patterns[idx].type = target.value === 'startsWith' ? 'startsWith' : 'contains';
-          }
-
-          if (kind === 'exact-category') {
-            const canonical = canonicalCategory(target.value);
-            if (!canonical && target.value.trim()) {
-              target.classList.add('invalid');
-              setStatus(`Categoría inválida: "${target.value}"`, 'bad');
-              return;
-            }
-            target.classList.remove('invalid');
-            if (canonical) {
-              state.exactRows[idx].category = canonical;
-              target.value = canonical;
-            }
-            closeCategoryMenu();
-          }
-          if (kind === 'pattern-category') {
-            const canonical = canonicalCategory(target.value);
-            if (!canonical && target.value.trim()) {
-              target.classList.add('invalid');
-              setStatus(`Categoría inválida: "${target.value}"`, 'bad');
-              return;
-            }
-            target.classList.remove('invalid');
-            if (canonical) {
-              state.patterns[idx].category = canonical;
-              target.value = canonical;
-            }
-            closeCategoryMenu();
-          }
-
-          if (kind === 'pattern-up') {
-            if (idx > 0) {
-              const tmp = state.patterns[idx - 1];
-              state.patterns[idx - 1] = state.patterns[idx];
-              state.patterns[idx] = tmp;
-              renderAll();
-            }
-          }
-          if (kind === 'pattern-down') {
-            if (idx < state.patterns.length - 1) {
-              const tmp = state.patterns[idx + 1];
-              state.patterns[idx + 1] = state.patterns[idx];
-              state.patterns[idx] = tmp;
-              renderAll();
-            }
-          }
-        });
-
         document.body.addEventListener('click', (event) => {
           const target = event.target;
           const kind = target.dataset.kind;
-          if (kind === 'combo-toggle') {
-            const targetKind = target.dataset.targetKind;
+          if (kind === 'exact-select') {
             const idx = Number(target.dataset.idx);
-            if (!targetKind || Number.isNaN(idx)) return;
-            const key = `${targetKind}:${idx}`;
-            if (state.activeMenuKey === key) {
-              closeCategoryMenu();
+            if (!Number.isNaN(idx)) state.exactRows[idx].selected = target.checked;
+            return;
+          }
+          if (kind === 'pattern-select') {
+            const idx = Number(target.dataset.idx);
+            if (!Number.isNaN(idx)) state.patterns[idx].selected = target.checked;
+            return;
+          }
+          if (kind === 'skip-select') {
+            const idx = Number(target.dataset.idx);
+            if (!Number.isNaN(idx)) state.skip[idx].selected = target.checked;
+            return;
+          }
+
+          if (target.classList.contains('grid-cell')) {
+            target.focus();
+            return;
+          }
+
+          if (kind === 'combo-toggle-editor') {
+            if (!state.editor) return;
+            const menu = document.getElementById('categoryEditorMenu');
+            if (!menu) return;
+            if (menu.hidden) {
+              openCategoryMenu(state.editor.kind, state.editor.idx);
             } else {
-              openCategoryMenu(targetKind, idx);
+              closeCategoryMenu();
             }
             return;
           }
+
           if (kind === 'combo-option') {
-            const targetKind = target.dataset.targetKind;
-            const idx = Number(target.dataset.idx);
             const value = target.dataset.value || '';
-            if (!targetKind || Number.isNaN(idx)) return;
-            applyCategorySelection(targetKind, idx, value);
-            closeCategoryMenu();
-            const input = document.querySelector(
-              `[data-kind="${targetKind}"][data-idx="${idx}"]`
-            );
-            if (input) {
-              input.value = value;
-              input.classList.remove('invalid');
-              input.focus();
-            }
+            if (!state.editor || !value) return;
+            applyCategorySelection(state.editor.kind, state.editor.idx, value);
+            commitEditCell();
             return;
           }
+
           if (kind === 'pattern-up' || kind === 'pattern-down') {
             event.preventDefault();
             const idx = Number(target.dataset.idx);
@@ -1185,96 +1366,152 @@
         });
 
         document.body.addEventListener('keydown', (event) => {
+          if (
+            event.shiftKey &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.altKey &&
+            (event.key === 'ArrowRight' || event.key === 'ArrowLeft')
+          ) {
+            event.preventDefault();
+            if (state.editor) {
+              const ok = commitEditCell();
+              if (!ok) return;
+            }
+            switchTabByDelta(event.key === 'ArrowRight' ? 1 : -1);
+            return;
+          }
+
+          if (state.editor) {
+            const { kind, idx } = state.editor;
+            const editor = document.getElementById('activeCellEditor');
+            if (!editor) return;
+
+            if (isCategoryKind(kind)) {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                moveCategoryHighlight(kind, idx, 1);
+                return;
+              }
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                moveCategoryHighlight(kind, idx, -1);
+                return;
+              }
+            }
+
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              cancelEditCell();
+              return;
+            }
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commitEditCell();
+              return;
+            }
+            if (event.key === 'Tab') {
+              event.preventDefault();
+              const ok = commitEditCell();
+              if (!ok) return;
+              const cfg = getGridConfigFromKind(kind);
+              if (!cfg) return;
+              const col = cfg.kinds.indexOf(kind);
+              if (col === -1) return;
+              const deltaCol = event.shiftKey ? -1 : 1;
+              const moved = moveGridFocus(kind, idx, 0, deltaCol);
+              if (!moved) setStatus('Sin más celdas para mover con Tab.', 'info');
+              return;
+            }
+            if (event.key === 'PageDown' || event.key === 'PageUp') {
+              event.preventDefault();
+              const ok = commitEditCell();
+              if (!ok) return;
+              moveFocusByPage(event.key === 'PageDown' ? 'down' : 'up');
+              return;
+            }
+            return;
+          }
+
           const target = event.target;
-          if (!target || !target.dataset) return;
+          if (!target || !target.classList || !target.classList.contains('grid-cell')) return;
           const kind = target.dataset.kind;
           const row = Number(target.dataset.idx);
           if (!kind || Number.isNaN(row)) return;
           const cfg = getGridConfigFromKind(kind);
           if (!cfg) return;
 
-          if (kind === 'exact-category' || kind === 'pattern-category') {
-            if (event.key === 'ArrowDown' && !event.ctrlKey) {
-              event.preventDefault();
-              moveCategoryHighlight(kind, row, 1);
-              return;
-            }
-            if (event.key === 'ArrowUp' && !event.ctrlKey) {
-              event.preventDefault();
-              moveCategoryHighlight(kind, row, -1);
-              return;
-            }
-            if (event.key === 'Escape') {
-              closeCategoryMenu();
-              return;
-            }
-            if (event.key === 'Enter') {
-              if (pickHighlightedCategory(kind, row)) {
-                event.preventDefault();
-                const moved = moveGridFocus(kind, row, event.shiftKey ? -1 : 1, 0);
-                if (!moved) setStatus('Sin más filas para mover con Enter.', 'info');
-                return;
-              }
-            }
-            if (event.key === 'Tab') {
-              const picked = pickHighlightedCategory(kind, row);
-              if (picked) {
-                const col = cfg.kinds.indexOf(kind);
-                const isFirstCol = col === 0;
-                const isLastCol = col === cfg.kinds.length - 1;
-                if ((!event.shiftKey && isLastCol) || (event.shiftKey && isFirstCol)) {
-                  event.preventDefault();
-                  const moved = moveGridFocus(
-                    kind,
-                    row,
-                    event.shiftKey ? -1 : 1,
-                    event.shiftKey ? cfg.kinds.length - 1 : -col
-                  );
-                  if (!moved) setStatus('Sin más filas para mover con Tab.', 'info');
-                }
-                return;
-              }
-            }
-          }
-
           if (event.key === 'Enter') {
             event.preventDefault();
-            const moved = moveGridFocus(kind, row, event.shiftKey ? -1 : 1, 0);
-            if (!moved) setStatus('Sin más filas para mover con Enter.', 'info');
+            startEditCell(kind, row);
             return;
           }
-
-          if (event.key === 'Tab') {
-            const col = cfg.kinds.indexOf(kind);
-            const isFirstCol = col === 0;
-            const isLastCol = col === cfg.kinds.length - 1;
-            if ((!event.shiftKey && isLastCol) || (event.shiftKey && isFirstCol)) {
-              event.preventDefault();
-              const moved = moveGridFocus(kind, row, event.shiftKey ? -1 : 1, event.shiftKey ? cfg.kinds.length - 1 : -col);
-              if (!moved) setStatus('Sin más filas para mover con Tab.', 'info');
-            }
-            return;
-          }
-
-          if (event.ctrlKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+          if (event.key === 'Escape') {
             event.preventDefault();
-            const moved = moveGridFocus(kind, row, event.key === 'ArrowDown' ? 1 : -1, 0);
+            return;
+          }
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            const moved = moveGridFocus(kind, row, 1, 0);
             if (!moved) setStatus('Sin más filas en esa dirección.', 'info');
             return;
           }
-
-          if (event.ctrlKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+          if (event.key === 'ArrowUp') {
             event.preventDefault();
-            const moved = moveGridFocus(kind, row, 0, event.key === 'ArrowRight' ? 1 : -1);
+            const moved = moveGridFocus(kind, row, -1, 0);
+            if (!moved) setStatus('Sin más filas en esa dirección.', 'info');
+            return;
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            const moved = moveGridFocus(kind, row, 0, 1);
             if (!moved) setStatus('Sin más columnas en esa dirección.', 'info');
+            return;
+          }
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            const moved = moveGridFocus(kind, row, 0, -1);
+            if (!moved) setStatus('Sin más columnas en esa dirección.', 'info');
+            return;
+          }
+          if (event.key === 'Tab') {
+            event.preventDefault();
+            const moved = moveGridFocus(kind, row, 0, event.shiftKey ? -1 : 1);
+            if (!moved) {
+              const verticalMoved = moveGridFocus(kind, row, event.shiftKey ? -1 : 1, 0);
+              if (!verticalMoved) setStatus('Sin más celdas para mover con Tab.', 'info');
+            }
+            return;
+          }
+          if (event.key === ' ' || event.key === 'Spacebar') {
+            event.preventDefault();
+            toggleRowSelection(kind, row);
+            return;
+          }
+          if (event.key === 'Delete' || event.key === 'Backspace') {
+            event.preventDefault();
+            const deleted = deleteRowAt(kind, row);
+            if (deleted) setStatus('Fila eliminada.', 'ok');
+            return;
+          }
+          if (event.key === 'PageDown') {
+            event.preventDefault();
+            moveFocusByPage('down');
+            return;
+          }
+          if (event.key === 'PageUp') {
+            event.preventDefault();
+            moveFocusByPage('up');
           }
         });
 
         document.addEventListener('click', (event) => {
           const target = event.target;
           if (!(target instanceof Element)) return;
-          if (!target.closest('.category-cell')) {
+          if (!state.editor) return;
+          if (!target.closest('.category-cell') && !target.closest('.grid-cell')) {
             closeCategoryMenu();
+            commitEditCell();
           }
         });
       }
@@ -1285,6 +1522,7 @@
         resetSelections('pattern');
         resetSelections('skip');
         renderAll();
+        setActiveTab('exact', { focusCell: false });
         bindEvents();
       }
 
