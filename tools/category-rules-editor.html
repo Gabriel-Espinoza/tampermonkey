@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YNAB Category Rules Editor</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f1116;
+        --panel: #171a21;
+        --line: #303645;
+        --text: #dce3f0;
+        --muted: #9ca9bf;
+        --bad: #ef5350;
+        --ok: #66bb6a;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .toolbar,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .toolbar {
+        display: grid;
+        gap: 10px;
+      }
+      .toolbar-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+      button {
+        border: 1px solid var(--line);
+        background: #252b39;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 7px 10px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #2f3747;
+      }
+      button.secondary {
+        background: transparent;
+      }
+      input[type='text'],
+      select,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #0f141d;
+        color: var(--text);
+        padding: 7px 9px;
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .status {
+        color: var(--muted);
+      }
+      .status.ok {
+        color: var(--ok);
+      }
+      .status.bad {
+        color: var(--bad);
+      }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .section-head h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-top: 1px solid var(--line);
+        vertical-align: middle;
+        padding: 8px 6px;
+      }
+      th {
+        text-align: left;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      th.chk,
+      td.chk {
+        width: 28px;
+        text-align: center;
+      }
+      td.actions {
+        width: 100px;
+        white-space: nowrap;
+      }
+      .row-actions button {
+        padding: 4px 8px;
+        border-radius: 6px;
+      }
+      .invalid {
+        border-color: var(--bad) !important;
+      }
+      .category-cell {
+        position: relative;
+      }
+      .combo-wrap {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .combo-wrap input {
+        flex: 1;
+      }
+      .combo-toggle {
+        min-width: 32px;
+        padding: 7px 8px;
+        line-height: 1;
+      }
+      .combo-menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        max-height: 220px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #0f141d;
+        z-index: 20;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+      }
+      .combo-item {
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        background: transparent;
+        text-align: left;
+        border-radius: 0;
+        padding: 8px 10px;
+      }
+      .combo-item:last-child {
+        border-bottom: 0;
+      }
+      .combo-item:hover {
+        background: #2f3747;
+      }
+      .combo-item.active {
+        background: #2f3747;
+      }
+      .combo-empty {
+        padding: 8px 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      details {
+        margin-top: 6px;
+      }
+      .meta-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      .tip {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      dialog {
+        width: min(900px, 92vw);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #111722;
+        color: var(--text);
+      }
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .dialog-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <input id="fileInput" type="file" accept=".js,.json,.txt" hidden />
+          <button id="loadFileBtn">Cargar category-rules.js</button>
+          <button id="pasteJsonBtn" class="secondary">Pegar JSON/JS</button>
+          <button id="downloadBtn">Descargar .js</button>
+          <button id="copyBtn" class="secondary">Copiar JS</button>
+        </div>
+        <div class="toolbar-row small">
+          <span id="counts">0 exact · 0 patterns · 0 skip</span>
+          <span>·</span>
+          <span id="categoriesCount">0 categorías pre-cargadas</span>
+        </div>
+        <div id="status" class="status">Editor listo.</div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2>Metadatos</h2>
+          <span class="small">Se incluyen al exportar</span>
+        </div>
+        <div class="meta-grid">
+          <label>
+            source_file
+            <input id="sourceFileInput" type="text" />
+          </label>
+          <label>
+            generated_at_utc
+            <input id="generatedAtInput" type="text" placeholder="se completa al exportar" />
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2>Matches exactos</h2>
+          <div class="toolbar-row">
+            <button id="addExactBtn">Añadir fila</button>
+            <button id="deleteExactBtn" class="secondary">Eliminar seleccionadas</button>
+            <button id="pasteTabularBtn" class="secondary">Pegar desde Excel</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="chk"><input id="exactSelectAll" type="checkbox" /></th>
+              <th>Payee</th>
+              <th>Categoría (solo YNAB)</th>
+            </tr>
+          </thead>
+          <tbody id="exactTbody"></tbody>
+        </table>
+        <div class="tip">
+          La categoría debe existir en YNAB. Si necesitas una nueva, créala en YNAB y vuelve a correr
+          <code>python3 tools/build_category_rules_editor.py</code>.
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2>Patterns</h2>
+          <div class="toolbar-row">
+            <button id="addPatternBtn">Añadir fila</button>
+            <button id="deletePatternBtn" class="secondary">Eliminar seleccionadas</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="chk"><input id="patternSelectAll" type="checkbox" /></th>
+              <th>Categoría (solo YNAB)</th>
+              <th>Tipo</th>
+              <th>Valor</th>
+              <th>Orden</th>
+            </tr>
+          </thead>
+          <tbody id="patternsTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2>Skip</h2>
+          <div class="toolbar-row">
+            <button id="addSkipBtn">Añadir fila</button>
+            <button id="deleteSkipBtn" class="secondary">Eliminar seleccionadas</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="chk"><input id="skipSelectAll" type="checkbox" /></th>
+              <th>Payee (normalizado)</th>
+            </tr>
+          </thead>
+          <tbody id="skipTbody"></tbody>
+        </table>
+      </div>
+
+      <details class="panel">
+        <summary>Instrucciones rápidas</summary>
+        <ol>
+          <li>Ejecuta <code>python3 tools/build_category_rules_editor.py</code> para refrescar categorías desde YNAB.</li>
+          <li>Carga <code>shared/category-rules.js</code> con el botón superior.</li>
+          <li>Edita Exact / Patterns / Skip.</li>
+          <li>Teclado: <code>Enter</code>/<code>Shift+Enter</code> sube/baja filas, <code>Ctrl+flechas</code> navega celdas, <code>Tab</code> respeta salto entre filas.</li>
+          <li>Exporta con <code>Descargar .js</code> y reemplaza <code>shared/category-rules.js</code>.</li>
+        </ol>
+      </details>
+    </div>
+
+    <datalist id="categoryOptions"></datalist>
+
+    <dialog id="pasteDialog">
+      <h3>Pegar JSON o JS</h3>
+      <p class="small">Acepta objeto JSON o el archivo completo con wrapper IIFE.</p>
+      <textarea id="pasteArea" placeholder="Pega aquí el contenido..."></textarea>
+      <div class="dialog-actions">
+        <button id="closePasteBtn" class="secondary">Cancelar</button>
+        <button id="applyPasteBtn">Cargar</button>
+      </div>
+    </dialog>
+
+    <script>
+      const PRELOADED_YNAB_CATEGORIES = /*__YNAB_CATEGORIES_START__*/[
+  "Casa: 🎞️ Suscripciones",
+  "Casa: 🏠 Vivienda",
+  "Casa: 👖 Cuidado Personal",
+  "Casa: 👵 Nana",
+  "Casa: 🚗 Transporte",
+  "Casa: 🛒 Supermercado",
+  "Casa: 🧾 Cuentas",
+  "Credit Card Payments: Itau Internacional",
+  "Credit Card Payments: Itau Nacional",
+  "Credit Card Payments: Santander Internacional",
+  "Credit Card Payments: Santander Nacional",
+  "Educación: 🎒 Colegios",
+  "Educación: 🏅 Educación Continua",
+  "Educación: 🥋 Actividades Niños",
+  "Internal Master Category: Inflow: Ready to Assign",
+  "Internal Master Category: Uncategorized",
+  "Inversiones y Ahorro: Fintual: Niños",
+  "Inversiones y Ahorro: 🏢 Departamento",
+  "Inversiones y Ahorro: 🚑 Reserva",
+  "Otros: 🍽️ Almuerzo Trabajo",
+  "Otros: 🍿 Esparcimiento",
+  "Otros: 🎁 Gifts",
+  "Otros: 💰 Reembolsables",
+  "Otros: 😓 Shame, no recuerdo",
+  "Otros: 🛍️ Otras Compras",
+  "Salud: 🏋️ Deporte",
+  "Salud: 💊 Farmacia",
+  "Salud: 🧑‍⚕️ Médicos"
+]/*__YNAB_CATEGORIES_END__*/;
+
+      const state = {
+        exactRows: [],
+        patterns: [],
+        skip: [],
+        sourceFile: '',
+        generatedAtUtc: '',
+        categories: [],
+        categoriesLookup: new Map(),
+        activeMenuKey: null,
+        activeMenuHighlight: -1,
+      };
+
+      const el = {
+        fileInput: document.getElementById('fileInput'),
+        loadFileBtn: document.getElementById('loadFileBtn'),
+        pasteJsonBtn: document.getElementById('pasteJsonBtn'),
+        downloadBtn: document.getElementById('downloadBtn'),
+        copyBtn: document.getElementById('copyBtn'),
+        counts: document.getElementById('counts'),
+        categoriesCount: document.getElementById('categoriesCount'),
+        status: document.getElementById('status'),
+        sourceFileInput: document.getElementById('sourceFileInput'),
+        generatedAtInput: document.getElementById('generatedAtInput'),
+        exactTbody: document.getElementById('exactTbody'),
+        patternsTbody: document.getElementById('patternsTbody'),
+        skipTbody: document.getElementById('skipTbody'),
+        addExactBtn: document.getElementById('addExactBtn'),
+        deleteExactBtn: document.getElementById('deleteExactBtn'),
+        pasteTabularBtn: document.getElementById('pasteTabularBtn'),
+        addPatternBtn: document.getElementById('addPatternBtn'),
+        deletePatternBtn: document.getElementById('deletePatternBtn'),
+        addSkipBtn: document.getElementById('addSkipBtn'),
+        deleteSkipBtn: document.getElementById('deleteSkipBtn'),
+        exactSelectAll: document.getElementById('exactSelectAll'),
+        patternSelectAll: document.getElementById('patternSelectAll'),
+        skipSelectAll: document.getElementById('skipSelectAll'),
+        categoryOptions: document.getElementById('categoryOptions'),
+        pasteDialog: document.getElementById('pasteDialog'),
+        pasteArea: document.getElementById('pasteArea'),
+        closePasteBtn: document.getElementById('closePasteBtn'),
+        applyPasteBtn: document.getElementById('applyPasteBtn'),
+      };
+
+      function setStatus(message, kind = 'info') {
+        el.status.textContent = message;
+        el.status.classList.remove('ok', 'bad');
+        if (kind === 'ok') el.status.classList.add('ok');
+        if (kind === 'bad') el.status.classList.add('bad');
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function canonicalCategory(input) {
+        const key = String(input || '').trim().toLowerCase();
+        return state.categoriesLookup.get(key) || null;
+      }
+
+      function parsePreloadedCategories(seed) {
+        if (Array.isArray(seed)) return seed.slice();
+        if (typeof seed === 'string') {
+          if (seed === '__YNAB_CATEGORIES__') return [];
+          try {
+            const parsed = JSON.parse(seed);
+            if (Array.isArray(parsed)) return parsed;
+          } catch (_err) {
+            return [];
+          }
+        }
+        return [];
+      }
+
+      function setCategories(categories) {
+        const unique = Array.from(
+          new Set(
+            (categories || [])
+              .map((x) => String(x || '').trim())
+              .filter(Boolean)
+          )
+        ).sort((a, b) => a.localeCompare(b));
+
+        state.categories = unique;
+        state.categoriesLookup = new Map(unique.map((c) => [c.toLowerCase(), c]));
+        el.categoriesCount.textContent = `${unique.length} categorías pre-cargadas`;
+        el.categoryOptions.innerHTML = unique.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('');
+      }
+
+      function updateCounts() {
+        el.counts.textContent = `${state.exactRows.length} exact · ${state.patterns.length} patterns · ${state.skip.length} skip`;
+      }
+
+      function normalizeRowsFromRules(rules) {
+        state.exactRows = Object.entries(rules.exact || {}).map(([payee, category]) => ({
+          selected: false,
+          payee: String(payee || ''),
+          category: String(category || ''),
+        }));
+        state.patterns = (rules.patterns || []).map((p) => ({
+          selected: false,
+          category: String((p && p.category) || ''),
+          type: p && p.type === 'startsWith' ? 'startsWith' : 'contains',
+          value: String((p && p.value) || ''),
+        }));
+        state.skip = (rules.skip || []).map((v) => ({
+          selected: false,
+          value: String(v || ''),
+        }));
+        state.sourceFile = String(rules.source_file || '');
+        state.generatedAtUtc = String(rules.generated_at_utc || '');
+      }
+
+      function renderExactRows() {
+        el.exactTbody.innerHTML = state.exactRows
+          .map((row, idx) => {
+            const isValidCategory = !row.category || !!canonicalCategory(row.category);
+            return `
+              <tr>
+                <td class="chk">
+                  <input type="checkbox" data-kind="exact-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
+                </td>
+                <td>
+                  <input type="text" data-kind="exact-payee" data-idx="${idx}" value="${escapeHtml(row.payee)}" />
+                </td>
+                <td>
+                  <div class="category-cell" data-cell-kind="exact-category" data-idx="${idx}">
+                    <div class="combo-wrap">
+                      <input
+                        type="text"
+                        list="categoryOptions"
+                        data-kind="exact-category"
+                        data-idx="${idx}"
+                        value="${escapeHtml(row.category)}"
+                        class="${isValidCategory ? '' : 'invalid'}"
+                        autocomplete="off"
+                      />
+                      <button type="button" class="combo-toggle" data-kind="combo-toggle" data-target-kind="exact-category" data-idx="${idx}" title="Mostrar categorías">▾</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
+      }
+
+      function renderPatternsRows() {
+        el.patternsTbody.innerHTML = state.patterns
+          .map((row, idx) => {
+            const isValidCategory = !row.category || !!canonicalCategory(row.category);
+            return `
+              <tr>
+                <td class="chk">
+                  <input type="checkbox" data-kind="pattern-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
+                </td>
+                <td>
+                  <div class="category-cell" data-cell-kind="pattern-category" data-idx="${idx}">
+                    <div class="combo-wrap">
+                      <input
+                        type="text"
+                        list="categoryOptions"
+                        data-kind="pattern-category"
+                        data-idx="${idx}"
+                        value="${escapeHtml(row.category)}"
+                        class="${isValidCategory ? '' : 'invalid'}"
+                        autocomplete="off"
+                      />
+                      <button type="button" class="combo-toggle" data-kind="combo-toggle" data-target-kind="pattern-category" data-idx="${idx}" title="Mostrar categorías">▾</button>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <select data-kind="pattern-type" data-idx="${idx}">
+                    <option value="startsWith" ${row.type === 'startsWith' ? 'selected' : ''}>startsWith</option>
+                    <option value="contains" ${row.type === 'contains' ? 'selected' : ''}>contains</option>
+                  </select>
+                </td>
+                <td>
+                  <input type="text" data-kind="pattern-value" data-idx="${idx}" value="${escapeHtml(row.value)}" />
+                </td>
+                <td class="actions row-actions">
+                  <button data-kind="pattern-up" data-idx="${idx}" title="Subir">↑</button>
+                  <button data-kind="pattern-down" data-idx="${idx}" title="Bajar">↓</button>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
+      }
+
+      function renderSkipRows() {
+        el.skipTbody.innerHTML = state.skip
+          .map(
+            (row, idx) => `
+            <tr>
+              <td class="chk">
+                <input type="checkbox" data-kind="skip-select" data-idx="${idx}" ${row.selected ? 'checked' : ''} />
+              </td>
+              <td>
+                <input type="text" data-kind="skip-value" data-idx="${idx}" value="${escapeHtml(row.value)}" />
+              </td>
+            </tr>
+          `
+          )
+          .join('');
+      }
+
+      function renderAll() {
+        renderExactRows();
+        renderPatternsRows();
+        renderSkipRows();
+        el.sourceFileInput.value = state.sourceFile;
+        el.generatedAtInput.value = state.generatedAtUtc;
+        updateCounts();
+      }
+
+      function categoryMatchesFilter(category, filterText) {
+        return category.toLowerCase().includes(String(filterText || '').trim().toLowerCase());
+      }
+
+      function renderActiveCategoryMenu() {
+        if (!state.activeMenuKey) return;
+        const [kind, idxText] = state.activeMenuKey.split(':');
+        const idx = Number(idxText);
+        if (Number.isNaN(idx)) return;
+        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
+        if (!cell) {
+          state.activeMenuKey = null;
+          state.activeMenuHighlight = -1;
+          return;
+        }
+        let menu = cell.querySelector('.combo-menu');
+        if (!menu) {
+          menu = document.createElement('div');
+          menu.className = 'combo-menu';
+          cell.appendChild(menu);
+        }
+        const input = cell.querySelector(`[data-kind="${kind}"][data-idx="${idx}"]`);
+        if (!menu || !input) return;
+        const filtered = state.categories.filter((c) => categoryMatchesFilter(c, input.value));
+        if (!filtered.length) {
+          state.activeMenuHighlight = -1;
+          menu.innerHTML = '<div class="combo-empty">Sin coincidencias</div>';
+          return;
+        }
+        if (state.activeMenuHighlight < 0 || state.activeMenuHighlight >= filtered.length) {
+          state.activeMenuHighlight = 0;
+        }
+        menu.innerHTML = filtered
+          .map(
+            (c, menuIdx) =>
+              `<button type="button" class="combo-item ${menuIdx === state.activeMenuHighlight ? 'active' : ''}" data-kind="combo-option" data-target-kind="${kind}" data-idx="${idx}" data-menu-idx="${menuIdx}" data-value="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+          )
+          .join('');
+      }
+
+      function openCategoryMenu(kind, idx) {
+        const nextKey = `${kind}:${idx}`;
+        if (state.activeMenuKey !== nextKey) {
+          closeCategoryMenu();
+          state.activeMenuKey = nextKey;
+          state.activeMenuHighlight = 0;
+        }
+        renderActiveCategoryMenu();
+      }
+
+      function closeCategoryMenu() {
+        if (!state.activeMenuKey) return;
+        const [kind, idxText] = state.activeMenuKey.split(':');
+        const idx = Number(idxText);
+        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
+        if (cell) {
+          const menu = cell.querySelector('.combo-menu');
+          if (menu) menu.remove();
+        }
+        state.activeMenuKey = null;
+        state.activeMenuHighlight = -1;
+      }
+
+      function applyCategorySelection(kind, idx, value) {
+        if (kind === 'exact-category') state.exactRows[idx].category = value;
+        if (kind === 'pattern-category') state.patterns[idx].category = value;
+        const input = document.querySelector(`[data-kind="${kind}"][data-idx="${idx}"]`);
+        if (input) {
+          input.value = value;
+          input.classList.remove('invalid');
+        }
+      }
+
+      function pickHighlightedCategory(kind, idx) {
+        const key = `${kind}:${idx}`;
+        if (state.activeMenuKey !== key) return false;
+        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
+        if (!cell) return false;
+        const items = Array.from(cell.querySelectorAll('[data-kind="combo-option"]'));
+        if (!items.length) return false;
+        const menuIndex = Math.max(0, Math.min(state.activeMenuHighlight, items.length - 1));
+        const option = items[menuIndex];
+        const value = option.dataset.value || '';
+        if (!value) return false;
+        applyCategorySelection(kind, idx, value);
+        closeCategoryMenu();
+        const input = document.querySelector(`[data-kind="${kind}"][data-idx="${idx}"]`);
+        if (input) input.focus();
+        return true;
+      }
+
+      function moveCategoryHighlight(kind, idx, delta) {
+        const key = `${kind}:${idx}`;
+        if (state.activeMenuKey !== key) {
+          openCategoryMenu(kind, idx);
+          return;
+        }
+        const cell = document.querySelector(`[data-cell-kind="${kind}"][data-idx="${idx}"]`);
+        if (!cell) return;
+        const options = cell.querySelectorAll('[data-kind="combo-option"]');
+        if (!options.length) return;
+        const max = options.length - 1;
+        state.activeMenuHighlight = Math.max(0, Math.min(max, state.activeMenuHighlight + delta));
+        renderActiveCategoryMenu();
+      }
+
+      function resetSelections(kind) {
+        const list = kind === 'exact' ? state.exactRows : kind === 'pattern' ? state.patterns : state.skip;
+        list.forEach((row) => {
+          row.selected = false;
+        });
+      }
+
+      function removeSelected(kind) {
+        if (kind === 'exact') state.exactRows = state.exactRows.filter((r) => !r.selected);
+        if (kind === 'pattern') state.patterns = state.patterns.filter((r) => !r.selected);
+        if (kind === 'skip') state.skip = state.skip.filter((r) => !r.selected);
+        renderAll();
+      }
+
+      function parseRulesObjectFromText(text) {
+        const raw = String(text || '').trim();
+        if (!raw) throw new Error('Contenido vacío.');
+
+        if (raw.startsWith('{')) {
+          return JSON.parse(raw);
+        }
+
+        const anchor = raw.indexOf('root.YNABCategoryRules');
+        if (anchor === -1) {
+          throw new Error('No se encontró root.YNABCategoryRules en el contenido.');
+        }
+        const assign = raw.indexOf('=', anchor);
+        if (assign === -1) throw new Error('No se encontró la asignación de YNABCategoryRules.');
+        const start = raw.indexOf('{', assign);
+        if (start === -1) throw new Error('No se encontró el inicio del objeto de reglas.');
+
+        const end = findClosingBrace(raw, start);
+        const objectText = raw.slice(start, end + 1);
+        return JSON.parse(objectText);
+      }
+
+      function findClosingBrace(text, startIndex) {
+        let depth = 0;
+        let inString = false;
+        let quote = '';
+        let escaped = false;
+        for (let i = startIndex; i < text.length; i += 1) {
+          const ch = text[i];
+          if (inString) {
+            if (escaped) {
+              escaped = false;
+            } else if (ch === '\\') {
+              escaped = true;
+            } else if (ch === quote) {
+              inString = false;
+              quote = '';
+            }
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            inString = true;
+            quote = ch;
+            continue;
+          }
+          if (ch === '{') depth += 1;
+          if (ch === '}') {
+            depth -= 1;
+            if (depth === 0) return i;
+          }
+        }
+        throw new Error('No se pudo encontrar el cierre del objeto.');
+      }
+
+      function buildExportObject() {
+        const exact = {};
+        const patterns = [];
+        const skip = [];
+
+        for (const row of state.exactRows) {
+          const payee = row.payee.trim();
+          const category = row.category.trim();
+          if (!payee && !category) continue;
+          if (!payee || !category) {
+            throw new Error('En Exact, cada fila debe tener payee y categoría.');
+          }
+          const canonical = canonicalCategory(category);
+          if (!canonical) {
+            throw new Error(`Categoría no válida en Exact: "${category}".`);
+          }
+          exact[payee] = canonical;
+        }
+
+        for (const row of state.patterns) {
+          const category = row.category.trim();
+          const value = row.value.trim();
+          const type = row.type === 'startsWith' ? 'startsWith' : 'contains';
+          if (!category && !value) continue;
+          if (!category || !value) {
+            throw new Error('En Patterns, cada fila debe tener categoría y valor.');
+          }
+          const canonical = canonicalCategory(category);
+          if (!canonical) {
+            throw new Error(`Categoría no válida en Patterns: "${category}".`);
+          }
+          patterns.push({ category: canonical, type, value });
+        }
+
+        for (const row of state.skip) {
+          const value = row.value.trim();
+          if (value) skip.push(value);
+        }
+
+        return {
+          exact,
+          generated_at_utc: new Date().toISOString(),
+          patterns,
+          skip,
+          source_file: state.sourceFile.trim(),
+        };
+      }
+
+      function buildIifeString(rulesObj) {
+        const body = JSON.stringify(rulesObj, null, 2);
+        return `(function (root) {\n  'use strict';\n\n  root.YNABCategoryRules = ${body};\n})(typeof window !== 'undefined' ? window : this);\n`;
+      }
+
+      async function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+        const helper = document.createElement('textarea');
+        helper.value = text;
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand('copy');
+        document.body.removeChild(helper);
+      }
+
+      function downloadText(filename, content) {
+        const blob = new Blob([content], { type: 'text/javascript;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function parseTabularRows(text) {
+        const lines = String(text || '')
+          .split(/\r?\n/)
+          .map((x) => x.trim())
+          .filter(Boolean);
+        const rows = [];
+        for (const line of lines) {
+          let left = '';
+          let right = '';
+          if (line.includes('\t')) {
+            const [a, b] = line.split('\t');
+            left = a || '';
+            right = b || '';
+          } else {
+            const firstComma = line.indexOf(',');
+            if (firstComma === -1) continue;
+            left = line.slice(0, firstComma);
+            right = line.slice(firstComma + 1);
+          }
+          rows.push({ payee: left.trim(), category: right.trim() });
+        }
+        return rows;
+      }
+
+      function getGridConfigFromKind(kind) {
+        if (kind === 'exact-payee' || kind === 'exact-category') {
+          return {
+            grid: 'exact',
+            kinds: ['exact-payee', 'exact-category'],
+            rows: state.exactRows.length,
+          };
+        }
+        if (kind === 'pattern-category' || kind === 'pattern-type' || kind === 'pattern-value') {
+          return {
+            grid: 'pattern',
+            kinds: ['pattern-category', 'pattern-type', 'pattern-value'],
+            rows: state.patterns.length,
+          };
+        }
+        if (kind === 'skip-value') {
+          return {
+            grid: 'skip',
+            kinds: ['skip-value'],
+            rows: state.skip.length,
+          };
+        }
+        return null;
+      }
+
+      function focusGridCell(kind, rowIndex) {
+        const selector = `[data-kind="${kind}"][data-idx="${rowIndex}"]`;
+        const next = document.querySelector(selector);
+        if (!next) return false;
+        next.focus();
+        if (typeof next.select === 'function' && next.tagName === 'INPUT') {
+          next.select();
+        }
+        return true;
+      }
+
+      function moveGridFocus(currentKind, currentRow, rowDelta, colDelta) {
+        const cfg = getGridConfigFromKind(currentKind);
+        if (!cfg || cfg.rows === 0) return false;
+        const col = cfg.kinds.indexOf(currentKind);
+        if (col === -1) return false;
+
+        let targetRow = currentRow + rowDelta;
+        let targetCol = col + colDelta;
+
+        if (targetCol < 0) {
+          targetCol = cfg.kinds.length - 1;
+          targetRow -= 1;
+        }
+        if (targetCol >= cfg.kinds.length) {
+          targetCol = 0;
+          targetRow += 1;
+        }
+
+        if (targetRow < 0 || targetRow >= cfg.rows) return false;
+        return focusGridCell(cfg.kinds[targetCol], targetRow);
+      }
+
+      function bindEvents() {
+        el.loadFileBtn.addEventListener('click', () => el.fileInput.click());
+        el.fileInput.addEventListener('change', async (event) => {
+          const [file] = event.target.files || [];
+          if (!file) return;
+          try {
+            const text = await file.text();
+            const rules = parseRulesObjectFromText(text);
+            normalizeRowsFromRules(rules);
+            renderAll();
+            setStatus(`Cargado ${file.name}`, 'ok');
+          } catch (err) {
+            setStatus(`Error al cargar archivo: ${err.message}`, 'bad');
+          } finally {
+            el.fileInput.value = '';
+          }
+        });
+
+        el.pasteJsonBtn.addEventListener('click', () => {
+          el.pasteDialog.showModal();
+          el.pasteArea.focus();
+        });
+        el.closePasteBtn.addEventListener('click', () => el.pasteDialog.close());
+        el.applyPasteBtn.addEventListener('click', () => {
+          try {
+            const rules = parseRulesObjectFromText(el.pasteArea.value);
+            normalizeRowsFromRules(rules);
+            renderAll();
+            setStatus('Contenido pegado y cargado.', 'ok');
+            el.pasteDialog.close();
+          } catch (err) {
+            setStatus(`Error al parsear contenido pegado: ${err.message}`, 'bad');
+          }
+        });
+
+        el.downloadBtn.addEventListener('click', () => {
+          try {
+            state.sourceFile = el.sourceFileInput.value;
+            state.generatedAtUtc = el.generatedAtInput.value;
+            const exportObj = buildExportObject();
+            const js = buildIifeString(exportObj);
+            downloadText('category-rules.js', js);
+            el.generatedAtInput.value = exportObj.generated_at_utc;
+            setStatus('Archivo JS generado.', 'ok');
+          } catch (err) {
+            setStatus(err.message, 'bad');
+          }
+        });
+
+        el.copyBtn.addEventListener('click', async () => {
+          try {
+            state.sourceFile = el.sourceFileInput.value;
+            state.generatedAtUtc = el.generatedAtInput.value;
+            const exportObj = buildExportObject();
+            const js = buildIifeString(exportObj);
+            await copyToClipboard(js);
+            el.generatedAtInput.value = exportObj.generated_at_utc;
+            setStatus('JS copiado al portapapeles.', 'ok');
+          } catch (err) {
+            setStatus(`No se pudo copiar: ${err.message}`, 'bad');
+          }
+        });
+
+        el.addExactBtn.addEventListener('click', () => {
+          state.exactRows.push({ selected: false, payee: '', category: '' });
+          renderAll();
+        });
+        el.deleteExactBtn.addEventListener('click', () => removeSelected('exact'));
+        el.addPatternBtn.addEventListener('click', () => {
+          state.patterns.push({ selected: false, category: '', type: 'contains', value: '' });
+          renderAll();
+        });
+        el.deletePatternBtn.addEventListener('click', () => removeSelected('pattern'));
+        el.addSkipBtn.addEventListener('click', () => {
+          state.skip.push({ selected: false, value: '' });
+          renderAll();
+        });
+        el.deleteSkipBtn.addEventListener('click', () => removeSelected('skip'));
+
+        el.pasteTabularBtn.addEventListener('click', () => {
+          const text = window.prompt(
+            'Pega filas de 2 columnas (payee\\tcategoría o payee,categoría):'
+          );
+          if (!text) return;
+          const rows = parseTabularRows(text);
+          let added = 0;
+          let rejected = 0;
+          for (const row of rows) {
+            const canonical = canonicalCategory(row.category);
+            if (!row.payee || !canonical) {
+              rejected += 1;
+              continue;
+            }
+            state.exactRows.push({
+              selected: false,
+              payee: row.payee,
+              category: canonical,
+            });
+            added += 1;
+          }
+          renderAll();
+          setStatus(`Pega masiva: ${added} filas agregadas, ${rejected} rechazadas.`, added ? 'ok' : 'bad');
+        });
+
+        el.exactSelectAll.addEventListener('change', () => {
+          const checked = el.exactSelectAll.checked;
+          state.exactRows.forEach((r) => {
+            r.selected = checked;
+          });
+          renderAll();
+        });
+        el.patternSelectAll.addEventListener('change', () => {
+          const checked = el.patternSelectAll.checked;
+          state.patterns.forEach((r) => {
+            r.selected = checked;
+          });
+          renderAll();
+        });
+        el.skipSelectAll.addEventListener('change', () => {
+          const checked = el.skipSelectAll.checked;
+          state.skip.forEach((r) => {
+            r.selected = checked;
+          });
+          renderAll();
+        });
+
+        document.body.addEventListener('input', (event) => {
+          const target = event.target;
+          const kind = target.dataset.kind;
+          const idx = Number(target.dataset.idx);
+          if (!kind || Number.isNaN(idx)) return;
+
+          if (kind === 'exact-payee') state.exactRows[idx].payee = target.value;
+          if (kind === 'exact-category') {
+            state.exactRows[idx].category = target.value;
+            state.activeMenuHighlight = 0;
+            openCategoryMenu(kind, idx);
+          }
+          if (kind === 'pattern-category') {
+            state.patterns[idx].category = target.value;
+            state.activeMenuHighlight = 0;
+            openCategoryMenu(kind, idx);
+          }
+          if (kind === 'pattern-value') state.patterns[idx].value = target.value;
+          if (kind === 'skip-value') state.skip[idx].value = target.value;
+        });
+
+        document.body.addEventListener('change', (event) => {
+          const target = event.target;
+          const kind = target.dataset.kind;
+          const idx = Number(target.dataset.idx);
+          if (!kind || Number.isNaN(idx)) return;
+
+          if (kind === 'exact-select') state.exactRows[idx].selected = target.checked;
+          if (kind === 'pattern-select') state.patterns[idx].selected = target.checked;
+          if (kind === 'skip-select') state.skip[idx].selected = target.checked;
+          if (kind === 'pattern-type') {
+            state.patterns[idx].type = target.value === 'startsWith' ? 'startsWith' : 'contains';
+          }
+
+          if (kind === 'exact-category') {
+            const canonical = canonicalCategory(target.value);
+            if (!canonical && target.value.trim()) {
+              target.classList.add('invalid');
+              setStatus(`Categoría inválida: "${target.value}"`, 'bad');
+              return;
+            }
+            target.classList.remove('invalid');
+            if (canonical) {
+              state.exactRows[idx].category = canonical;
+              target.value = canonical;
+            }
+            closeCategoryMenu();
+          }
+          if (kind === 'pattern-category') {
+            const canonical = canonicalCategory(target.value);
+            if (!canonical && target.value.trim()) {
+              target.classList.add('invalid');
+              setStatus(`Categoría inválida: "${target.value}"`, 'bad');
+              return;
+            }
+            target.classList.remove('invalid');
+            if (canonical) {
+              state.patterns[idx].category = canonical;
+              target.value = canonical;
+            }
+            closeCategoryMenu();
+          }
+
+          if (kind === 'pattern-up') {
+            if (idx > 0) {
+              const tmp = state.patterns[idx - 1];
+              state.patterns[idx - 1] = state.patterns[idx];
+              state.patterns[idx] = tmp;
+              renderAll();
+            }
+          }
+          if (kind === 'pattern-down') {
+            if (idx < state.patterns.length - 1) {
+              const tmp = state.patterns[idx + 1];
+              state.patterns[idx + 1] = state.patterns[idx];
+              state.patterns[idx] = tmp;
+              renderAll();
+            }
+          }
+        });
+
+        document.body.addEventListener('click', (event) => {
+          const target = event.target;
+          const kind = target.dataset.kind;
+          if (kind === 'combo-toggle') {
+            const targetKind = target.dataset.targetKind;
+            const idx = Number(target.dataset.idx);
+            if (!targetKind || Number.isNaN(idx)) return;
+            const key = `${targetKind}:${idx}`;
+            if (state.activeMenuKey === key) {
+              closeCategoryMenu();
+            } else {
+              openCategoryMenu(targetKind, idx);
+            }
+            return;
+          }
+          if (kind === 'combo-option') {
+            const targetKind = target.dataset.targetKind;
+            const idx = Number(target.dataset.idx);
+            const value = target.dataset.value || '';
+            if (!targetKind || Number.isNaN(idx)) return;
+            applyCategorySelection(targetKind, idx, value);
+            closeCategoryMenu();
+            const input = document.querySelector(
+              `[data-kind="${targetKind}"][data-idx="${idx}"]`
+            );
+            if (input) {
+              input.value = value;
+              input.classList.remove('invalid');
+              input.focus();
+            }
+            return;
+          }
+          if (kind === 'pattern-up' || kind === 'pattern-down') {
+            event.preventDefault();
+            const idx = Number(target.dataset.idx);
+            if (Number.isNaN(idx)) return;
+            if (kind === 'pattern-up' && idx > 0) {
+              const tmp = state.patterns[idx - 1];
+              state.patterns[idx - 1] = state.patterns[idx];
+              state.patterns[idx] = tmp;
+              renderAll();
+            }
+            if (kind === 'pattern-down' && idx < state.patterns.length - 1) {
+              const tmp = state.patterns[idx + 1];
+              state.patterns[idx + 1] = state.patterns[idx];
+              state.patterns[idx] = tmp;
+              renderAll();
+            }
+          }
+        });
+
+        document.body.addEventListener('keydown', (event) => {
+          const target = event.target;
+          if (!target || !target.dataset) return;
+          const kind = target.dataset.kind;
+          const row = Number(target.dataset.idx);
+          if (!kind || Number.isNaN(row)) return;
+          const cfg = getGridConfigFromKind(kind);
+          if (!cfg) return;
+
+          if (kind === 'exact-category' || kind === 'pattern-category') {
+            if (event.key === 'ArrowDown' && !event.ctrlKey) {
+              event.preventDefault();
+              moveCategoryHighlight(kind, row, 1);
+              return;
+            }
+            if (event.key === 'ArrowUp' && !event.ctrlKey) {
+              event.preventDefault();
+              moveCategoryHighlight(kind, row, -1);
+              return;
+            }
+            if (event.key === 'Escape') {
+              closeCategoryMenu();
+              return;
+            }
+            if (event.key === 'Enter') {
+              if (pickHighlightedCategory(kind, row)) {
+                event.preventDefault();
+                const moved = moveGridFocus(kind, row, event.shiftKey ? -1 : 1, 0);
+                if (!moved) setStatus('Sin más filas para mover con Enter.', 'info');
+                return;
+              }
+            }
+            if (event.key === 'Tab') {
+              const picked = pickHighlightedCategory(kind, row);
+              if (picked) {
+                const col = cfg.kinds.indexOf(kind);
+                const isFirstCol = col === 0;
+                const isLastCol = col === cfg.kinds.length - 1;
+                if ((!event.shiftKey && isLastCol) || (event.shiftKey && isFirstCol)) {
+                  event.preventDefault();
+                  const moved = moveGridFocus(
+                    kind,
+                    row,
+                    event.shiftKey ? -1 : 1,
+                    event.shiftKey ? cfg.kinds.length - 1 : -col
+                  );
+                  if (!moved) setStatus('Sin más filas para mover con Tab.', 'info');
+                }
+                return;
+              }
+            }
+          }
+
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            const moved = moveGridFocus(kind, row, event.shiftKey ? -1 : 1, 0);
+            if (!moved) setStatus('Sin más filas para mover con Enter.', 'info');
+            return;
+          }
+
+          if (event.key === 'Tab') {
+            const col = cfg.kinds.indexOf(kind);
+            const isFirstCol = col === 0;
+            const isLastCol = col === cfg.kinds.length - 1;
+            if ((!event.shiftKey && isLastCol) || (event.shiftKey && isFirstCol)) {
+              event.preventDefault();
+              const moved = moveGridFocus(kind, row, event.shiftKey ? -1 : 1, event.shiftKey ? cfg.kinds.length - 1 : -col);
+              if (!moved) setStatus('Sin más filas para mover con Tab.', 'info');
+            }
+            return;
+          }
+
+          if (event.ctrlKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+            event.preventDefault();
+            const moved = moveGridFocus(kind, row, event.key === 'ArrowDown' ? 1 : -1, 0);
+            if (!moved) setStatus('Sin más filas en esa dirección.', 'info');
+            return;
+          }
+
+          if (event.ctrlKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+            event.preventDefault();
+            const moved = moveGridFocus(kind, row, 0, event.key === 'ArrowRight' ? 1 : -1);
+            if (!moved) setStatus('Sin más columnas en esa dirección.', 'info');
+          }
+        });
+
+        document.addEventListener('click', (event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (!target.closest('.category-cell')) {
+            closeCategoryMenu();
+          }
+        });
+      }
+
+      function init() {
+        setCategories(parsePreloadedCategories(PRELOADED_YNAB_CATEGORIES));
+        resetSelections('exact');
+        resetSelections('pattern');
+        resetSelections('skip');
+        renderAll();
+        bindEvents();
+      }
+
+      init();
+    </script>
+  </body>
+</html>

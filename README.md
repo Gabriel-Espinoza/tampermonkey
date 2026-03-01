@@ -240,6 +240,29 @@ python3 "tools/build_category_rules.py" \
 
 El script usa solo librerías estándar de Python y reporta en consola payees ambiguos (cuando un mismo payee aparece con múltiples categorías) para revisión manual.
 
+### Editor visual de `category-rules.js`
+
+También puedes editar reglas con una UI HTML en `tools/category-rules-editor.html` (grilla para `exact`, grilla para `patterns`, y lista `skip`).
+
+Antes de abrir el editor, pre-carga las categorías reales de YNAB (sin valores libres) ejecutando:
+
+```bash
+python3 "tools/build_category_rules_editor.py"
+```
+
+Ese script:
+
+1. Lee `accessToken` y `budgetId` desde `loaders/unified.loader.gabo.js`.
+2. Consulta `GET /budgets/{budgetId}/categories` en YNAB.
+3. Inyecta la lista `"Group: Category"` en `tools/category-rules-editor.html`.
+
+Flujo sugerido:
+
+1. Ejecutar `python3 "tools/build_category_rules_editor.py"`.
+2. Abrir `tools/category-rules-editor.html` en el navegador.
+3. Cargar `shared/category-rules.js` desde el editor.
+4. Editar y exportar el nuevo `category-rules.js`.
+
 ## Tablas paginadas vs. no paginadas
 
 Las tablas del sitio de Itaú tienen distinto comportamiento de paginación:

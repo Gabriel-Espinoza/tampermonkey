@@ -60,3 +60,4 @@
 - Category assignment is best-effort: if category lookup fails or no rule matches, transaction creation continues uncategorized (no sync regression).
 - `buildYNABPreviewRows` now includes `categoria_inferida` so CSV diagnostics show what category would be assigned before syncing.
 - Rule generation script: `tools/build_category_rules.py` builds `shared/category-rules.js` from a YNAB TSV export and reports ambiguous payees for manual review.
+- Visual editor helper: `tools/build_category_rules_editor.py` reads `loaders/unified.loader.gabo.js`, fetches `GET /budgets/{budgetId}/categories`, and injects a strict category list into `tools/category-rules-editor.html`. The HTML uses marker comments (`/*__YNAB_CATEGORIES_START__*/` ... `/*__YNAB_CATEGORIES_END__*/`) so the list can be regenerated in-place repeatedly.
