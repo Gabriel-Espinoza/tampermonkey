@@ -30,7 +30,6 @@
     "car wash 7 la reina": "Casa: 🚗 Transporte",
     "casa ideas algarrobo": "Otros: 🛍️ Otras Compras",
     "castano": "Otros: 🍽️ Almuerzo Trabajo",
-    "central parking system": "Casa: 🚗 Transporte",
     "choco churros": "Otros: 🍿 Esparcimiento",
     "cine hoyts plaza p hur santiago": "Otros: 🍿 Esparcimiento",
     "cinepolis eb chile": "Otros: 🍿 Esparcimiento",
@@ -152,7 +151,6 @@
     "mayan": "Otros: 🍿 Esparcimiento",
     "mc donalds": "Otros: 🍿 Esparcimiento",
     "mc donalds santiago": "Otros: 🍿 Esparcimiento",
-    "meki compras": "Salud: 💊 Farmacia",
     "mercado circular": "Casa: 🛒 Supermercado",
     "mercado pago 5": "Casa: 🚗 Transporte",
     "mercado pago 5 tcom compras": "Casa: 🚗 Transporte",
@@ -179,8 +177,6 @@
     "mercadopago lasergam": "Otros: 🍿 Esparcimiento",
     "mercadopago littleca": "Otros: 🍿 Esparcimiento",
     "mercadopago luna": "Otros: 🛍️ Otras Compras",
-    "mercadopago mercadol": "Casa: 👖 Cuidado Personal",
-    "mercadopago mercadol las condes": "Otros: 🍿 Esparcimiento",
     "mercadopago panleonm": "Casa: 🛒 Supermercado",
     "mercadopago pizzlare las cond": "Otros: 🍿 Esparcimiento",
     "mercadopago pluspark": "Casa: 🚗 Transporte",
@@ -275,9 +271,6 @@
     "sushi delivery": "Otros: 🍿 Esparcimiento",
     "territoria apoquindo": "Casa: 🚗 Transporte",
     "the body shop": "Otros: 🎁 Gifts",
-    "tienda mall plaza egan": "Casa: 🚗 Transporte",
-    "tienda mall plaza egan compras": "Casa: 🚗 Transporte",
-    "tienda mall plaza egan santiago": "Casa: 🚗 Transporte",
     "tienda paper mark": "Otros: 🎁 Gifts",
     "tiendas sm": "Educación: 🎒 Colegios",
     "tobalaba santiago": "Otros: 🍽️ Almuerzo Trabajo",
@@ -300,9 +293,23 @@
     "wendy s": "Otros: 🍿 Esparcimiento",
     "western union": "Otros: 🎁 Gifts",
     "zapateria": "Otros: 🛍️ Otras Compras",
-    "zara": "Casa: 👖 Cuidado Personal"
+    "zara": "Casa: 👖 Cuidado Personal",
+    "Payu uber trip santiago": "Casa: 🚗 Transporte",
+    "Payu diario financi santiago": "Casa: 🎞️ Suscripciones",
+    "Restaurant casa orie santiago": "Otros: 🍿 Esparcimiento",
+    "Mercadopago amasa las condes": "Casa: 🛒 Supermercado",
+    "Hip lider los dominico santiago": "Casa: 🛒 Supermercado",
+    "Mercado circular santiago": "Casa: 🛒 Supermercado",
+    "Mp clinicauniversida las condes": "Salud: 🧑‍⚕️ Médicos",
+    "Salud mental santiago": "Salud: 🧑‍⚕️ Médicos",
+    "La nonna santiago": "Casa: 🛒 Supermercado",
+    "Nintendo of america las condes": "Otros: 🍿 Esparcimiento",
+    "Flo asefy daniel santiago": "Casa: 👵 Nana",
+    "Las bezanilla santiago": "Casa: 🛒 Supermercado",
+    "Latam.com xp otras santiago": "Otros: 🍿 Esparcimiento",
+    "Segur. falabella rr. santiago": "Inversiones y Ahorro: 🏢 Departamento"
   },
-  "generated_at_utc": "2026-02-28T15:40:38+00:00",
+  "generated_at_utc": "2026-03-01T02:43:06.494Z",
   "patterns": [
     {
       "category": "Salud: 🧑‍⚕️ Médicos",
@@ -332,7 +339,7 @@
     {
       "category": "Salud: 💊 Farmacia",
       "type": "startsWith",
-      "value": "cruz"
+      "value": "cruz v"
     },
     {
       "category": "Salud: 💊 Farmacia",
@@ -392,16 +399,6 @@
     {
       "category": "Casa: 🛒 Supermercado",
       "type": "startsWith",
-      "value": "santa"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
-      "value": "strip"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "startsWith",
       "value": "unimarc"
     },
     {
@@ -422,17 +419,7 @@
     {
       "category": "Otros: 🍿 Esparcimiento",
       "type": "contains",
-      "value": "choco"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "contains",
       "value": "churros"
-    },
-    {
-      "category": "Salud: 💊 Farmacia",
-      "type": "contains",
-      "value": "contra"
     },
     {
       "category": "Casa: 🛒 Supermercado",
@@ -445,24 +432,9 @@
       "value": "cuentas"
     },
     {
-      "category": "Otros: 🎁 Gifts",
-      "type": "contains",
-      "value": "decathlonchilespa"
-    },
-    {
       "category": "Otros: 🍿 Esparcimiento",
       "type": "contains",
       "value": "donalds"
-    },
-    {
-      "category": "Otros: 🍿 Esparcimiento",
-      "type": "contains",
-      "value": "eats"
-    },
-    {
-      "category": "Casa: 🚗 Transporte",
-      "type": "contains",
-      "value": "egan"
     },
     {
       "category": "Casa: 🚗 Transporte",
@@ -477,37 +449,7 @@
     {
       "category": "Casa: 🛒 Supermercado",
       "type": "contains",
-      "value": "gales"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "contains",
-      "value": "larrain"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "contains",
-      "value": "maitenes"
-    },
-    {
-      "category": "Casa: 🚗 Transporte",
-      "type": "contains",
-      "value": "mekis"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "contains",
       "value": "micocacola"
-    },
-    {
-      "category": "Casa: 🛒 Supermercado",
-      "type": "contains",
-      "value": "oneclick"
-    },
-    {
-      "category": "Casa: 🧾 Cuentas",
-      "type": "contains",
-      "value": "security"
     },
     {
       "category": "Otros: 🛍️ Otras Compras",
@@ -517,22 +459,37 @@
     {
       "category": "Casa: 🚗 Transporte",
       "type": "contains",
-      "value": "tcom"
-    },
-    {
-      "category": "Salud: 💊 Farmacia",
-      "type": "contains",
-      "value": "verde"
-    },
-    {
-      "category": "Casa: 🧾 Cuentas",
-      "type": "contains",
-      "value": "vida"
+      "value": "5 tcom"
     },
     {
       "category": "Casa: 🚗 Transporte",
       "type": "contains",
       "value": "zervo"
+    },
+    {
+      "category": "Casa: 🚗 Transporte",
+      "type": "startsWith",
+      "value": "Tienda mall plaza"
+    },
+    {
+      "category": "Casa: 🚗 Transporte",
+      "type": "contains",
+      "value": "parking"
+    },
+    {
+      "category": "Casa: 🏠 Vivienda",
+      "type": "contains",
+      "value": "vigahome"
+    },
+    {
+      "category": "Salud: 🧑‍⚕️ Médicos",
+      "type": "contains",
+      "value": "Odontologia de gales"
+    },
+    {
+      "category": "Salud: 💊 Farmacia",
+      "type": "contains",
+      "value": "Meki"
     }
   ],
   "skip": [
