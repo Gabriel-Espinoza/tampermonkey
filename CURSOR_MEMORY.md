@@ -46,9 +46,14 @@
 ## Cuota Date Adjustment (tarjeta-nacional-facturado)
 
 - For installment transactions (cuota != "01/1"), the bank shows the original purchase date, not the billing date.
-- `adjustDateToCurrentMonth` replaces month/year with the current month/year, keeping the same day.
-- If the day doesn't exist in the current month (e.g., day 31 in February), it clamps to the last day of the month.
-- This ensures YNAB reflects when the money actually leaves (billing cycle), not when the purchase was made.
+- `adjustDateToCurrentMonth` always returns the 1st day of the current month/year, regardless of the original purchase day.
+- This ensures YNAB reflects the billing cycle month, not when the purchase was made.
+
+## Monto de Transacción (tarjeta-nacional-facturado)
+
+- The DOM table has multiple amount columns: "Monto Operación", "Monto total a pagar", and "Valor Cuota".
+- The correct column to use is **"Valor Cuota"** (`operacion_fld_21_iso8601`), which is the amount actually billed in the current cycle.
+- "Monto Operación" is the original purchase amount (may differ for installments), "Monto total a pagar" is the total across all installments.
 
 ## Auto-categorization by Payee
 

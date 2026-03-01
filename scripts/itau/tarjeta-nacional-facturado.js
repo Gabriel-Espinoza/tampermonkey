@@ -82,15 +82,9 @@
     function adjustDateToCurrentMonth(fechaStr) {
       var parts = fechaStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if (!parts) return fechaStr;
-      var day = parseInt(parts[1], 10);
       var now = new Date();
-      var curMonth = now.getMonth();
-      var curYear = now.getFullYear();
-      var lastDay = new Date(curYear, curMonth + 1, 0).getDate();
-      if (day > lastDay) day = lastDay;
-      var dd = String(day).padStart(2, '0');
-      var mm = String(curMonth + 1).padStart(2, '0');
-      return dd + '/' + mm + '/' + curYear;
+      var mm = String(now.getMonth() + 1).padStart(2, '0');
+      return '01/' + mm + '/' + now.getFullYear();
     }
 
     function getMaxNonCuotaDate(movimientos) {
@@ -113,7 +107,7 @@
         var item = {
           fecha: isCuota ? adjustDateToCurrentMonth(d.fecha) : d.fecha,
           movimientos: d.descripcion,
-          amountMilli: Lib.parseMilliunits(d.monto, true)
+          amountMilli: Lib.parseMilliunits(d.valorCuota, true)
         };
         if (isCuota) item.memo = 'cuota ' + d.cuota;
         out.push(item);
