@@ -228,6 +228,19 @@ El sync ahora puede asignar `category_id` al crear transacciones vía API, usand
 3. Antes de crear transacciones, `lib.js` obtiene categorías del presupuesto (`GET /categories`) y resuelve `Group: Category -> category_id`.
 4. Si hay match, se envía `category_id` en el `POST /transactions`. Si no hay match, la transacción se crea sin categoría (comportamiento anterior).
 
+### Consumo de API y batch
+
+El sync usa el endpoint batch de YNAB para minimizar el número de llamadas (límite: 200 por hora):
+
+| Operación | Endpoint | Llamadas |
+|-----------|----------|----------|
+| Obtener transacciones existentes | `GET /transactions` | 1 |
+| Obtener categorías | `GET /categories` | 1 (con cache) |
+| Crear transacciones faltantes | `POST /transactions` con `{ transactions: [...] }` | 1 por cada 50 |
+| Corregir fechas (fuzzy) + marcar | `PATCH /transactions` con `{ transactions: [...] }` | 1 por cada 50 |
+
+Ejemplo: un extracto con 80 transacciones nuevas, 5 correcciones de fecha y 3 marcadas consume **5 llamadas** en lugar de las ~91 que haría el enfoque individual.
+
 ### Regenerar reglas desde export de YNAB
 
 Puedes regenerar `shared/category-rules.js` con el historial más reciente:

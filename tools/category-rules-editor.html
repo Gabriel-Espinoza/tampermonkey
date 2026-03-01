@@ -364,7 +364,7 @@
           <li>Ejecuta <code>python3 tools/build_category_rules_editor.py</code> para refrescar categorías desde YNAB.</li>
           <li>Carga <code>shared/category-rules.js</code> con el botón superior.</li>
           <li>Edita Exact / Patterns / Skip.</li>
-          <li>Teclado: flechas navegan celdas; <code>Enter</code> entra/guarda edición; <code>Esc</code> cancela; <code>Tab</code> avanza entre celdas; <code>Shift+←/→</code> cambia de pestaña.</li>
+          <li>Teclado: flechas navegan celdas; <code>Enter</code> entra/guarda edición; <code>Esc</code> cancela; <code>Tab</code> avanza entre celdas; <code>Shift+←/→</code> cambia de pestaña; <code>Cmd+Enter</code> crea una fila en la pestaña activa.</li>
           <li>Exporta con <code>Descargar .js</code> y reemplaza <code>shared/category-rules.js</code>.</li>
         </ol>
       </details>
@@ -843,6 +843,28 @@
         if (kind === 'pattern') state.patterns = state.patterns.filter((r) => !r.selected);
         if (kind === 'skip') state.skip = state.skip.filter((r) => !r.selected);
         renderAll();
+      }
+
+      function createRowInActiveTab() {
+        if (state.activeTab === 'exact') {
+          state.exactRows.push({ selected: false, payee: '', category: '' });
+          renderAll();
+          focusGridCell('exact-payee', state.exactRows.length - 1);
+          return true;
+        }
+        if (state.activeTab === 'pattern') {
+          state.patterns.push({ selected: false, category: '', type: 'contains', value: '' });
+          renderAll();
+          focusGridCell('pattern-type', state.patterns.length - 1);
+          return true;
+        }
+        if (state.activeTab === 'skip') {
+          state.skip.push({ selected: false, value: '' });
+          renderAll();
+          focusGridCell('skip-value', state.skip.length - 1);
+          return true;
+        }
+        return false;
       }
 
       function toggleRowSelection(kind, idx) {
@@ -1366,6 +1388,17 @@
         });
 
         document.body.addEventListener('keydown', (event) => {
+          if (event.metaKey && !event.ctrlKey && !event.altKey && event.key === 'Enter') {
+            event.preventDefault();
+            if (state.editor) {
+              const ok = commitEditCell();
+              if (!ok) return;
+            }
+            const created = createRowInActiveTab();
+            if (created) setStatus('Fila nueva creada.', 'ok');
+            return;
+          }
+
           if (
             event.shiftKey &&
             !event.ctrlKey &&

@@ -75,7 +75,6 @@ def fetch_ynab_categories(access_token: str, budget_id: str) -> list[str]:
     )
 
     secure_context = ssl.create_default_context()
-    insecure_context = ssl._create_unverified_context()
 
     try:
         with urllib.request.urlopen(req, timeout=20, context=secure_context) as res:
@@ -87,10 +86,14 @@ def fetch_ynab_categories(access_token: str, budget_id: str) -> list[str]:
         reason = str(getattr(err, "reason", err))
         if "CERTIFICATE_VERIFY_FAILED" not in reason:
             raise RuntimeError(f"Network error calling YNAB API: {err}") from err
-        # Some local Python installations on macOS fail cert chain validation.
-        # Fallback is intentionally scoped to this request.
-        with urllib.request.urlopen(req, timeout=20, context=insecure_context) as res:
-            payload = json.loads(res.read().decode("utf-8"))
+        # Some macOS Python installs ship without the system CA bundle wired up.
+        # Guide the user to fix this properly rather than silently downgrading security.
+        raise RuntimeError(
+            "SSL certificate verification failed. "
+            "On macOS, run: /Applications/Python*/Install\\ Certificates.command  "
+            "or: pip install certifi && REQUESTS_CA_BUNDLE=$(python3 -c 'import certifi; print(certifi.where())') "
+            "python3 tools/build_category_rules_editor.py"
+        ) from err
 
     groups = payload.get("data", {}).get("category_groups", [])
     categories: list[str] = []

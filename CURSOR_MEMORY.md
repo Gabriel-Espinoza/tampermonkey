@@ -61,5 +61,14 @@
 - `buildYNABPreviewRows` now includes `categoria_inferida` so CSV diagnostics show what category would be assigned before syncing.
 - Rule generation script: `tools/build_category_rules.py` builds `shared/category-rules.js` from a YNAB TSV export and reports ambiguous payees for manual review.
 - Visual editor helper: `tools/build_category_rules_editor.py` reads `loaders/unified.loader.gabo.js`, fetches `GET /budgets/{budgetId}/categories`, and injects a strict category list into `tools/category-rules-editor.html`. The HTML uses marker comments (`/*__YNAB_CATEGORIES_START__*/` ... `/*__YNAB_CATEGORIES_END__*/`) so the list can be regenerated in-place repeatedly.
+
+## YNAB API Batch
+
+- `runSyncYNAB` uses batch endpoints for all write operations to minimize API call count (limit: 200/hour).
+- **Create:** `POST /budgets/{id}/transactions` with `{ transactions: [...] }` (body key is `transactions`, not `transaction`). Response: `data.data.transactions` (created), `data.data.duplicate_import_ids` (already existed, NOT under `data.data.bulk`).
+- **Update (fuzzy date fix + mark):** `PATCH /budgets/{id}/transactions` (no `/{txId}`) with `{ transactions: [{id, ...fields}, ...] }`. Each object needs `id` plus only the fields to change. Response: `data.data.transactions` (updated), HTTP 209.
+- Fuzzy updates and "marcar" entries are combined into a single PATCH payload.
+- Payloads are chunked in groups of 50 via `chunkArray(arr, 50)` and processed sequentially (not in parallel) to avoid rate limit spikes.
+- `createYNABTransactionsBulk` and `updateYNABTransactionsBulk` are exported in `BankYNABLib`. The singular `createYNABTransaction` and `updateYNABTransaction` are also kept and exported for potential external use.
 - YNAB batch API: `POST /budgets/{id}/transactions` accepts `{ transactions: [...] }` for bulk create. `PATCH /budgets/{id}/transactions` (no txId in path) accepts `{ transactions: [{ id, ...fields }] }` for bulk update. `duplicate_import_ids` is at `data.data.duplicate_import_ids`, NOT under `data.data.bulk`. No documented batch size limit; chunk at 50 for safety.
 - `createYNABTransaction` and `updateYNABTransaction` are exported in `BankYNABLib` API object (lines 670-671 of shared/lib.js). Even after adding bulk variants, keep the singular functions exported for backward compatibility.

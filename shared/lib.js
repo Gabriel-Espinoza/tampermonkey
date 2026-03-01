@@ -184,6 +184,14 @@
     });
   }
 
+  function chunkArray(arr, size) {
+    var chunks = [];
+    for (var i = 0; i < arr.length; i += size) {
+      chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+  }
+
   function createYNABTransaction(accessToken, budgetId, tx) {
     var path = '/budgets/' + budgetId + '/transactions';
     var body = { transaction: tx };
@@ -193,12 +201,41 @@
     });
   }
 
+  function createYNABTransactionsBulk(accessToken, budgetId, transactions) {
+    if (transactions.length === 0) return Promise.resolve({ success: true, created: 0, duplicates: [], errors: [] });
+    var path = '/budgets/' + budgetId + '/transactions';
+    var body = { transactions: transactions };
+    return ynabFetch(accessToken, budgetId, path, { method: 'POST', body: JSON.stringify(body) }).then(function (res) {
+      if (!res.ok) return res.text().then(function (t) { return { success: false, created: 0, duplicates: [], errors: [res.status + ': ' + t] }; });
+      return res.json().then(function (data) {
+        var d = data.data || {};
+        var created = Array.isArray(d.transactions) ? d.transactions.length : 0;
+        var duplicates = Array.isArray(d.duplicate_import_ids) ? d.duplicate_import_ids : [];
+        return { success: true, created: created, duplicates: duplicates, errors: [] };
+      });
+    });
+  }
+
   function updateYNABTransaction(accessToken, budgetId, transactionId, updates) {
     var path = '/budgets/' + budgetId + '/transactions/' + transactionId;
     var body = { transaction: updates };
     return ynabFetch(accessToken, budgetId, path, { method: 'PATCH', body: JSON.stringify(body) }).then(function (res) {
       if (!res.ok) return res.text().then(function (t) { return { success: false, error: res.status + ': ' + t }; });
       return { success: true, error: null };
+    });
+  }
+
+  function updateYNABTransactionsBulk(accessToken, budgetId, updates) {
+    if (updates.length === 0) return Promise.resolve({ success: true, updated: 0, errors: [] });
+    var path = '/budgets/' + budgetId + '/transactions';
+    var body = { transactions: updates };
+    return ynabFetch(accessToken, budgetId, path, { method: 'PATCH', body: JSON.stringify(body) }).then(function (res) {
+      if (!res.ok) return res.text().then(function (t) { return { success: false, updated: 0, errors: [res.status + ': ' + t] }; });
+      return res.json().then(function (data) {
+        var d = data.data || {};
+        var updated = Array.isArray(d.transactions) ? d.transactions.length : 0;
+        return { success: true, updated: updated, errors: [] };
+      });
     });
   }
 
@@ -400,9 +437,7 @@
           console.warn('[BankYNABLib] No se pudieron cargar categorías de YNAB:', catRes.error);
         }
 
-        var created = 0;
-        var createErrors = [];
-        var createPromises = aCrear.map(function (mov) {
+        var transactionsToCreate = aCrear.map(function (mov) {
           var payee = (mov.movimientos != null ? mov.movimientos : mov.descripcion) || '(sin descripción)';
           var tx = {
             account_id: accountId,
@@ -419,30 +454,41 @@
               tx.category_id = categoryMap[inferredCategory];
             }
           }
-          return createYNABTransaction(accessToken, budgetId, tx).then(function (res) {
-            if (res.success) created++;
-            else createErrors.push(res.error);
-          });
+          return tx;
         });
 
-        return Promise.all(createPromises).then(function () {
-        var updatePromises = [];
+        var created = 0;
+        var createDuplicates = 0;
+        var createErrors = [];
+        var createChunks = chunkArray(transactionsToCreate, 50);
+
+        var createChainPromise = createChunks.reduce(function (chain, chunk) {
+          return chain.then(function () {
+            return createYNABTransactionsBulk(accessToken, budgetId, chunk).then(function (res) {
+              if (res.success) {
+                created += res.created;
+                createDuplicates += res.duplicates.length;
+              } else {
+                createErrors = createErrors.concat(res.errors);
+              }
+            });
+          });
+        }, Promise.resolve());
+
+        return createChainPromise.then(function () {
         var corrected = 0;
-        var correctErrors = [];
+        var marked = 0;
+        var updateErrors = [];
+
+        var patchPayload = [];
 
         fuzzyUpdates.forEach(function (u) {
-          var patch = { date: u.newDate };
+          var patch = { id: u.id, date: u.newDate };
           if (!u.existingFlag) patch.flag_color = YNAB_FLAG_DATE_CORRECTED;
-          updatePromises.push(
-            updateYNABTransaction(accessToken, budgetId, u.id, patch).then(function (res) {
-              if (res.success) corrected++;
-              else correctErrors.push(res.error);
-            })
-          );
+          patch._type = 'fuzzy';
+          patchPayload.push(patch);
         });
 
-        var marked = 0;
-        var markErrors = [];
         if (!config.skipMarkNotInBank) {
           var soloEnYNAB = ynabTx.filter(function (t) {
             if (config.skipMarkAfterDate && t.date > config.skipMarkAfterDate) return false;
@@ -450,24 +496,44 @@
           });
           soloEnYNAB.forEach(function (t) {
             var newMemo = (t.memo || '') + memoSuffix;
-            var patch = { memo: newMemo };
+            var patch = { id: t.id, memo: newMemo };
             if (!t.flag_color) patch.flag_color = YNAB_FLAG_NOT_IN_BANK;
-            updatePromises.push(
-              updateYNABTransaction(accessToken, budgetId, t.id, patch).then(function (res) {
-                if (res.success) marked++;
-                else markErrors.push(res.error);
-              })
-            );
+            patch._type = 'mark';
+            patchPayload.push(patch);
           });
         }
 
-        return Promise.all(updatePromises).then(function () {
+        var fuzzyCount = 0;
+        var markCount = 0;
+        var cleanPayload = patchPayload.map(function (p) {
+          if (p._type === 'fuzzy') fuzzyCount++;
+          else if (p._type === 'mark') markCount++;
+          var clean = {};
+          for (var k in p) if (k !== '_type') clean[k] = p[k];
+          return clean;
+        });
+
+        var updateChunks = chunkArray(cleanPayload, 50);
+        var updateChainPromise = updateChunks.reduce(function (chain, chunk) {
+          return chain.then(function () {
+            return updateYNABTransactionsBulk(accessToken, budgetId, chunk).then(function (res) {
+              if (res.success) {
+                corrected = fuzzyCount;
+                marked = markCount;
+              } else {
+                updateErrors = updateErrors.concat(res.errors);
+              }
+            });
+          });
+        }, Promise.resolve());
+
+        return updateChainPromise.then(function () {
           var msg = 'Listo. Creadas: ' + created + '.';
+          if (createDuplicates > 0) msg += ' Duplicadas (omitidas): ' + createDuplicates + '.';
           if (corrected > 0) msg += ' Fechas corregidas: ' + corrected + '.';
           if (!config.skipMarkNotInBank) msg += ' Marcadas (no en extracto): ' + marked + '.';
           if (createErrors.length) msg += ' Errores al crear: ' + createErrors.slice(0, 3).join('; ');
-          if (correctErrors.length) msg += ' Errores corrigiendo fechas: ' + correctErrors.slice(0, 3).join('; ');
-          if (markErrors.length) msg += ' Errores al marcar: ' + markErrors.slice(0, 3).join('; ');
+          if (updateErrors.length) msg += ' Errores al actualizar: ' + updateErrors.slice(0, 3).join('; ');
           alert(msg);
         });
       });
@@ -666,9 +732,12 @@
     parseMilliunits: parseMilliunits,
     parseUSDToNumber: parseUSDToNumber,
     buildMovimientosWithImportIds: buildMovimientosWithImportIds,
+    chunkArray: chunkArray,
     getYNABTransactions: getYNABTransactions,
     createYNABTransaction: createYNABTransaction,
+    createYNABTransactionsBulk: createYNABTransactionsBulk,
     updateYNABTransaction: updateYNABTransaction,
+    updateYNABTransactionsBulk: updateYNABTransactionsBulk,
     inferCategory: inferCategory,
     getYNABCategories: getYNABCategories,
     runSyncYNAB: runSyncYNAB,
