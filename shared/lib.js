@@ -503,23 +503,22 @@
           });
         }
 
-        var fuzzyCount = 0;
-        var markCount = 0;
-        var cleanPayload = patchPayload.map(function (p) {
-          if (p._type === 'fuzzy') fuzzyCount++;
-          else if (p._type === 'mark') markCount++;
-          var clean = {};
-          for (var k in p) if (k !== '_type') clean[k] = p[k];
-          return clean;
-        });
-
-        var updateChunks = chunkArray(cleanPayload, 50);
+        var updateChunks = chunkArray(patchPayload, 50);
         var updateChainPromise = updateChunks.reduce(function (chain, chunk) {
           return chain.then(function () {
-            return updateYNABTransactionsBulk(accessToken, budgetId, chunk).then(function (res) {
+            var chunkFuzzyCount = 0;
+            var chunkMarkCount = 0;
+            var cleanChunk = chunk.map(function (p) {
+              if (p._type === 'fuzzy') chunkFuzzyCount++;
+              else if (p._type === 'mark') chunkMarkCount++;
+              var clean = {};
+              for (var k in p) if (k !== '_type') clean[k] = p[k];
+              return clean;
+            });
+            return updateYNABTransactionsBulk(accessToken, budgetId, cleanChunk).then(function (res) {
               if (res.success) {
-                corrected = fuzzyCount;
-                marked = markCount;
+                corrected += chunkFuzzyCount;
+                marked += chunkMarkCount;
               } else {
                 updateErrors = updateErrors.concat(res.errors);
               }
