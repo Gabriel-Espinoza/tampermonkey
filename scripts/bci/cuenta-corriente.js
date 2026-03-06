@@ -16,10 +16,11 @@
     var TABLE_SELECTOR = 'table.table.striped-table.border-table';
     var ACTIONS_ID = 'ynab-bci-actions';
     var LOG_PREFIX = '[BCI cuenta corriente]';
-    var observer = null;
+    var observers = [];
     var observerTimer = null;
     var scheduledAttempt = null;
     var hasInjected = false;
+    var observedDocuments = [];
 
     function log() {
       var args = Array.prototype.slice.call(arguments);
@@ -59,6 +60,34 @@
       return out;
     }
 
+    function getDocumentLabel(doc) {
+      if (!doc) return 'unknown';
+      if (doc === document) return 'top';
+      try {
+        if (doc.defaultView && doc.defaultView.frameElement) {
+          var frame = doc.defaultView.frameElement;
+          return 'iframe#' + (frame.id || '(sin-id)') + '.' + (frame.className || '(sin-class)');
+        }
+      } catch (e) {
+        return 'iframe(inaccesible)';
+      }
+      return 'other-document';
+    }
+
+    function getSearchDocuments() {
+      var docs = [document];
+      var iframes = document.querySelectorAll('iframe');
+      for (var i = 0; i < iframes.length; i++) {
+        try {
+          var iframeDoc = iframes[i].contentDocument;
+          if (iframeDoc) docs.push(iframeDoc);
+        } catch (e) {
+          warn('No se pudo acceder a iframe #' + (i + 1) + ':', e && e.message ? e.message : e);
+        }
+      }
+      return docs;
+    }
+
     function getCellText(row, idx) {
       var cells = row.querySelectorAll('td');
       if (!cells || cells.length <= idx) return '';
@@ -96,15 +125,15 @@
       return datos;
     }
 
-    function getCandidateTables() {
-      return document.querySelectorAll(TABLE_SELECTOR);
+    function getCandidateTables(doc) {
+      return doc.querySelectorAll(TABLE_SELECTOR);
     }
 
-    function ensureActionsContainer(table) {
-      var existing = document.getElementById(ACTIONS_ID);
+    function ensureActionsContainer(table, doc) {
+      var existing = doc.getElementById(ACTIONS_ID);
       if (existing) return existing;
 
-      var wrapper = document.createElement('div');
+      var wrapper = doc.createElement('div');
       wrapper.id = ACTIONS_ID;
       wrapper.style.display = 'flex';
       wrapper.style.gap = '12px';
@@ -119,25 +148,56 @@
       return wrapper;
     }
 
+    function findMovimientosTable() {
+      var docs = getSearchDocuments();
+      for (var d = 0; d < docs.length; d++) {
+        var doc = docs[d];
+        var tables = getCandidateTables(doc);
+        for (var i = 0; i < tables.length; i++) {
+          var table = tables[i];
+          if (!hasExpectedHeaders(table)) continue;
+          return { table: table, doc: doc };
+        }
+      }
+      return null;
+    }
+
     async function waitForMovimientosTable() {
-      var table = await Lib.waitForElement(TABLE_SELECTOR, 40);
-      if (!table) {
-        warn('waitForElement no encontro tabla con selector:', TABLE_SELECTOR);
+      var attempts = 0;
+      return new Promise(function (resolve) {
+        function tick() {
+          var match = findMovimientosTable();
+          if (match) {
+            resolve(match);
+            return;
+          }
+          attempts += 1;
+          if (attempts >= 40) {
+            warn('No se encontro tabla BCI en top document ni iframes con selector:', TABLE_SELECTOR);
+            resolve(null);
+            return;
+          }
+          setTimeout(tick, 400);
+        }
+        tick();
+      });
+    }
+
+    async function getTableOrWarn() {
+      var match = await waitForMovimientosTable();
+      if (!match) {
+        warn('No se encontro la tabla de movimientos.');
         return null;
       }
-      if (!hasExpectedHeaders(table)) {
-        warn('Se encontro una tabla, pero no coincide con headers esperados:', getHeaderSummary(table));
-        return null;
-      }
-      return table;
+      return match;
     }
 
     async function runDownload() {
-      var table = await waitForMovimientosTable();
-      if (!table) {
-        console.warn('[BCI cuenta corriente] No se encontro la tabla de movimientos.');
+      var match = await getTableOrWarn();
+      if (!match) {
         return;
       }
+      var table = match.table;
       var datos = extractMovimientos(table);
       if (datos.length === 0) {
         alert('No hay movimientos en la tabla.');
@@ -161,11 +221,12 @@
     }
 
     async function runSyncYNAB() {
-      var table = await waitForMovimientosTable();
-      if (!table) {
+      var match = await getTableOrWarn();
+      if (!match) {
         alert('No se encontro la tabla de movimientos.');
         return;
       }
+      var table = match.table;
       var datos = extractMovimientos(table);
       if (datos.length === 0) {
         alert('No hay movimientos en la tabla.');
@@ -180,14 +241,15 @@
       });
     }
 
-    function injectButtons(table) {
-      if (document.querySelector('#' + ACTIONS_ID + ' [data-bci-csv-injected]') &&
-          document.querySelector('#' + ACTIONS_ID + ' [data-bci-ynab-injected]')) {
+    function injectButtons(table, doc) {
+      doc = doc || document;
+      if (doc.querySelector('#' + ACTIONS_ID + ' [data-bci-csv-injected]') &&
+          doc.querySelector('#' + ACTIONS_ID + ' [data-bci-ynab-injected]')) {
         hasInjected = true;
-        log('Los botones BCI ya estaban inyectados.');
+        log('Los botones BCI ya estaban inyectados en', getDocumentLabel(doc));
         return true;
       }
-      var actions = ensureActionsContainer(table);
+      var actions = ensureActionsContainer(table, doc);
       if (!actions) {
         warn('No fue posible crear/encontrar el contenedor de acciones.');
         return false;
@@ -212,31 +274,36 @@
         }
       ], runSyncYNAB);
       hasInjected = true;
-      log('Botones inyectados correctamente. Filas detectadas:', extractMovimientos(table).length);
+      log('Botones inyectados correctamente en', getDocumentLabel(doc), 'Filas detectadas:', extractMovimientos(table).length);
       return true;
     }
 
     function tryInject(source) {
       log('Intentando inyectar desde:', source, 'URL:', window.location.href, 'readyState:', document.readyState);
-      var tables = getCandidateTables();
-      log('Tablas candidatas encontradas:', tables.length);
-      if (!tables.length) return false;
-      for (var i = 0; i < tables.length; i++) {
-        var table = tables[i];
-        var headers = getHeaderSummary(table);
-        var matches = hasExpectedHeaders(table);
-        log('Tabla candidata #' + (i + 1) + ' headers:', headers, 'matchEsperado:', matches);
-        if (!matches) continue;
-        return injectButtons(table);
+      var docs = getSearchDocuments();
+      log('Documentos inspeccionados:', docs.map(getDocumentLabel), 'iframes detectados:', Math.max(docs.length - 1, 0));
+      for (var d = 0; d < docs.length; d++) {
+        var doc = docs[d];
+        var tables = getCandidateTables(doc);
+        log('Tablas candidatas encontradas en', getDocumentLabel(doc) + ':', tables.length);
+        if (!tables.length) continue;
+        for (var i = 0; i < tables.length; i++) {
+          var table = tables[i];
+          var headers = getHeaderSummary(table);
+          var matches = hasExpectedHeaders(table);
+          log('Tabla candidata #' + (i + 1) + ' en ' + getDocumentLabel(doc) + ' headers:', headers, 'matchEsperado:', matches);
+          if (!matches) continue;
+          return injectButtons(table, doc);
+        }
       }
       return false;
     }
 
     function stopObserver(reason) {
-      if (observer) {
-        observer.disconnect();
-        observer = null;
+      for (var i = 0; i < observers.length; i++) {
+        observers[i].disconnect();
       }
+      observers = [];
       if (observerTimer) {
         clearTimeout(observerTimer);
         observerTimer = null;
@@ -258,30 +325,37 @@
     }
 
     function startObserver() {
-      if (observer || hasInjected) return;
-      if (!document.body) {
-        warn('document.body aun no existe; no se puede iniciar MutationObserver.');
-        return;
-      }
-      observer = new MutationObserver(function (mutations) {
-        for (var i = 0; i < mutations.length; i++) {
-          if (mutations[i].addedNodes && mutations[i].addedNodes.length) {
-            scheduleRetry('addedNodes');
-            return;
-          }
+      if (hasInjected) return;
+      var docs = getSearchDocuments();
+      for (var d = 0; d < docs.length; d++) {
+        var doc = docs[d];
+        if (observedDocuments.indexOf(doc) !== -1) continue;
+        if (!doc.body) {
+          warn('No existe body en', getDocumentLabel(doc), 'no se puede iniciar MutationObserver aun.');
+          continue;
         }
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
+        var observer = new MutationObserver(function (mutations) {
+          for (var i = 0; i < mutations.length; i++) {
+            if (mutations[i].addedNodes && mutations[i].addedNodes.length) {
+              scheduleRetry('addedNodes');
+              return;
+            }
+          }
+        });
+        observer.observe(doc.body, { childList: true, subtree: true });
+        observers.push(observer);
+        observedDocuments.push(doc);
+        log('MutationObserver iniciado en', getDocumentLabel(doc), 'para detectar carga asincrona de la tabla.');
+      }
       observerTimer = setTimeout(function () {
         stopObserver('timeout 60s');
       }, 60000);
-      log('MutationObserver iniciado para detectar carga asincrona de la tabla.');
     }
 
     (async function boot() {
       log('Init BCI. accountId configurado:', !!YNAB_ACCOUNT_ID, 'selector tabla:', TABLE_SELECTOR);
-      var table = await waitForMovimientosTable();
-      if (!table) {
+      var match = await waitForMovimientosTable();
+      if (!match) {
         warn('DOM no compatible en carga inicial; se activara observacion de mutaciones.');
         if (document.readyState !== 'complete') {
           window.addEventListener('load', function () {
@@ -292,7 +366,7 @@
         startObserver();
         return;
       }
-      injectButtons(table);
+      injectButtons(match.table, match.doc);
     })();
   }
 
