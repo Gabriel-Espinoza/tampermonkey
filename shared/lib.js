@@ -491,6 +491,7 @@
 
         if (!config.skipMarkNotInBank) {
           var soloEnYNAB = ynabTx.filter(function (t) {
+            if (config.skipReconciled && t.cleared === 'reconciled') return false;
             if (config.skipMarkAfterDate && t.date > config.skipMarkAfterDate) return false;
             return !matchedYnabIds.has(t.id);
           });

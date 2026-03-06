@@ -16,7 +16,7 @@
 
 - Config options flow from the module script → `buildYNABPreviewRows` / `runSyncYNAB` in lib.js.
 - `skipMarkNotInBank: true` is used for paginated tables (can't reliably detect "not in bank" from partial DOM).
-- `skipReconciled: true` is used for facturado (non-paginated) to avoid flagging already-verified transactions.
+- `skipReconciled: true` is used for facturado (non-paginated) to avoid flagging already-verified transactions. Must be passed in BOTH `buildYNABPreviewRows` AND `runSyncYNAB` calls — the lib's `runSyncYNAB` also checks this flag when building the `soloEnYNAB` list.
 
 ## Matching Logic (two-pass: exact → fuzzy)
 

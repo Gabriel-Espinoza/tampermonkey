@@ -162,6 +162,7 @@
         accessToken: YNAB_ACCESS_TOKEN,
         budgetId: YNAB_BUDGET_ID,
         accountId: YNAB_ACCOUNT_ID,
+        skipReconciled: true,
         skipMarkAfterDate: getMaxNonCuotaDate(movimientos)
       });
     }
