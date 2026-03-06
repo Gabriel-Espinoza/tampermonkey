@@ -3,6 +3,8 @@
 
   root.YNABCategoryRules = {
   "exact": {
+    "Transferencia recibida de CRISTIAN HUMBERTO VASQUEZ VASQ": "Inflow: Ready to Assign",
+    "Pago recibido de COLMENA GOLDEN CROSS SA": "Inflow: Ready to Assign",
     "10176 bk la reina santiago": "Otros: 🍿 Esparcimiento",
     "40533 sbx rosario nort": "Otros: 🍽️ Almuerzo Trabajo",
     "40632 sbx portal la re": "Otros: 🍿 Esparcimiento",
