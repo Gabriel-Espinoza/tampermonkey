@@ -108,6 +108,8 @@ const CONFIG = {
 
 Las URLs `@require` ya apuntan a GitHub Pages y no necesitan cambios.
 
+El loader usa `GM_xmlhttpRequest` con `@connect api.ynab.com` para hablar con la API de YNAB. Esto evita bloqueos de CORS/CSP cuando el banco renderiza la vista dentro de iframes o contextos más restrictivos.
+
 ### 3. Instalar en Tampermonkey
 
 1. Abre Tampermonkey en tu navegador.
@@ -147,8 +149,8 @@ accounts: {
 
 ### Nota para BCI
 
-El match actual de BCI usa `https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*`, que es una ruta genérica.  
-Por eso el módulo `scripts/bci/cuenta-corriente.js` valida en runtime la firma de la tabla (`Fecha`, `Descripcion`, `Cargo`, `Abono`) antes de inyectar botones y sincronizar.
+BCI usa una ruta contenedora genérica (`https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*`) y además carga la vista de movimientos dentro de un iframe cuya URL puede pasar por `https://www.bci.cl/svcRest/infraestructura/seguridad/servlet/TokenAutorizacion*` antes de resolver a `https://personas.bci.cl/nuevaWeb/fe-saldosultimosmovpersonas/*`.  
+Por eso el loader hace match en las tres URLs, y el módulo `scripts/bci/cuenta-corriente.js` además valida en runtime la firma de la tabla (`Fecha`, `Descripcion`, `Cargo`, `Abono`) antes de inyectar botones y sincronizar.
 
 ## Publicar en GitHub Pages
 

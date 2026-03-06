@@ -8,7 +8,10 @@
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-en-dolares*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/cuenta-nacional*
 // @match        https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*
-// @grant        none
+// @match        https://www.bci.cl/svcRest/infraestructura/seguridad/servlet/TokenAutorizacion*
+// @match        https://personas.bci.cl/nuevaWeb/fe-saldosultimosmovpersonas/*
+// @grant        GM_xmlhttpRequest
+// @connect      api.ynab.com
 // @require      https://gabriel-espinoza.github.io/tampermonkey/shared/lib.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/shared/category-rules.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/cuenta-corriente.js
@@ -41,7 +44,9 @@
     { pattern: /cuenta-nacional/,          module: 'ItauTarjetaNacionalFacturado',  bank: 'itau', account: 'nacional' },
     { pattern: /compras-pesos/,            module: 'ItauTarjetaNacional',           bank: 'itau', account: 'nacional' },
     { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional',      bank: 'itau', account: 'internacional' },
-    { pattern: /bci\.cl\/cl\/bci\/aplicaciones\/contenido\.jsf/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' }
+    { pattern: /bci\.cl\/cl\/bci\/aplicaciones\/contenido\.jsf/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
+    { pattern: /bci\.cl\/svcRest\/infraestructura\/seguridad\/servlet\/TokenAutorizacion/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
+    { pattern: /personas\.bci\.cl\/nuevaWeb\/fe-saldosultimosmovpersonas\//, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' }
   ];
 
   var url = window.location.href;

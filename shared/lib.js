@@ -168,6 +168,37 @@
       'Content-Type': 'application/json'
     };
     for (var h in (options.headers || {})) headers[h] = options.headers[h];
+    if (typeof GM_xmlhttpRequest === 'function') {
+      return new Promise(function (resolve, reject) {
+        GM_xmlhttpRequest({
+          method: options.method || 'GET',
+          url: url,
+          headers: headers,
+          data: options.body,
+          responseType: 'text',
+          onload: function (res) {
+            resolve({
+              ok: res.status >= 200 && res.status < 300,
+              status: res.status,
+              text: function () { return Promise.resolve(res.responseText || ''); },
+              json: function () {
+                try {
+                  return Promise.resolve(JSON.parse(res.responseText || '{}'));
+                } catch (e) {
+                  return Promise.reject(e);
+                }
+              }
+            });
+          },
+          onerror: function (err) {
+            reject(new Error('GM_xmlhttpRequest failed: ' + ((err && err.error) || 'network error')));
+          },
+          ontimeout: function () {
+            reject(new Error('GM_xmlhttpRequest timed out'));
+          }
+        });
+      });
+    }
     return fetch(url, (function (o) { var r = {}; for (var k in o) if (k !== 'headers') r[k] = o[k]; r.headers = headers; return r; })(options));
   }
 
