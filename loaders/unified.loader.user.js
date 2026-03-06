@@ -7,6 +7,7 @@
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-pesos*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-en-dolares*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/cuenta-nacional*
+// @match        https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*
 // @grant        none
 // @require      https://gabriel-espinoza.github.io/tampermonkey/shared/lib.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/shared/category-rules.js
@@ -14,6 +15,7 @@
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-nacional.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-nacional-facturado.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-internacional.js
+// @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/bci/cuenta-corriente.js
 // ==/UserScript==
 
 (function () {
@@ -27,6 +29,9 @@
         cc:            '<insert account id here>',
         nacional:      '<insert account id here>',
         internacional: '<insert account id here>'
+      },
+      bci: {
+        bci_caro: '<insert account id here>'
       }
     }
   };
@@ -35,7 +40,8 @@
     { pattern: /cuenta-corriente\/saldos/, module: 'ItauCuentaCorriente',           bank: 'itau', account: 'cc' },
     { pattern: /cuenta-nacional/,          module: 'ItauTarjetaNacionalFacturado',  bank: 'itau', account: 'nacional' },
     { pattern: /compras-pesos/,            module: 'ItauTarjetaNacional',           bank: 'itau', account: 'nacional' },
-    { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional',      bank: 'itau', account: 'internacional' }
+    { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional',      bank: 'itau', account: 'internacional' },
+    { pattern: /bci\.cl\/cl\/bci\/aplicaciones\/contenido\.jsf/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' }
   ];
 
   var url = window.location.href;

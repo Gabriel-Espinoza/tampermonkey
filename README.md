@@ -17,11 +17,13 @@ tampermonkey/
 │   ├── lib.js                         # Librería compartida (GitHub Pages)
 │   └── category-rules.js              # Reglas de auto-categorización por payee (generadas)
 ├── scripts/
-│   └── itau/
-│       ├── cuenta-corriente.js        # Módulo público (GitHub Pages)
-│       ├── tarjeta-nacional.js
-│       ├── tarjeta-nacional-facturado.js   # Estado de cuenta facturado (cuenta nacional)
-│       └── tarjeta-internacional.js
+│   ├── itau/
+│   │   ├── cuenta-corriente.js        # Módulo público (GitHub Pages)
+│   │   ├── tarjeta-nacional.js
+│   │   ├── tarjeta-nacional-facturado.js   # Estado de cuenta facturado (cuenta nacional)
+│   │   └── tarjeta-internacional.js
+│   └── bci/
+│       └── cuenta-corriente.js        # BCI movimientos (contenido.jsf)
 ├── loaders/                           # Privado/local (ignorado por git)
 │   └── unified.loader.user.js        # Loader unificado (template)
 └── dom examples/                      # Ignorado por git (ver abajo)
@@ -34,8 +36,8 @@ tampermonkey/
 
 Un único loader de Tampermonkey cubre todas las cuentas de un banco. El flujo es:
 
-1. Tampermonkey detecta que estás en una URL de Itaú y ejecuta el **loader unificado**.
-2. El loader carga con `@require` la librería compartida y los 3 módulos de Itaú desde GitHub Pages.
+1. Tampermonkey detecta que estás en una URL soportada (Itaú o BCI) y ejecuta el **loader unificado**.
+2. El loader carga con `@require` la librería compartida y los módulos públicos desde GitHub Pages.
 3. Según la URL actual, el loader determina qué módulo inicializar y le pasa las credenciales correspondientes desde un bloque `CONFIG` centralizado.
 4. El módulo público extrae movimientos del DOM, ofrece descarga CSV de diagnóstico (comparando contra YNAB) y sincroniza con YNAB.
 
@@ -80,7 +82,7 @@ Necesitas 3 datos de tu cuenta YNAB:
 | `accountId`   | UUID de la cuenta destino | `GET https://api.ynab.com/v1/budgets/{budget_id}/accounts`            |
 
 
-Necesitas un `accountId` por cada tipo de cuenta (cuenta corriente, tarjeta nacional, tarjeta internacional).
+Necesitas un `accountId` por cada cuenta que quieras sincronizar.
 
 ### 2. Configurar el loader
 
@@ -96,6 +98,9 @@ const CONFIG = {
       cc:            '<insert account id here>',
       nacional:      '<insert account id here>',
       internacional: '<insert account id here>'
+    },
+    bci: {
+      bci_caro: '<insert account id here>'
     }
   }
 };
@@ -110,7 +115,7 @@ Las URLs `@require` ya apuntan a GitHub Pages y no necesitan cambios.
 3. Borra el contenido por defecto y pega todo el contenido de `unified.loader.user.js` (ya con tus tokens).
 4. Guarda (Ctrl+S / Cmd+S).
 
-Eso es todo. El script se activará automáticamente al visitar cualquiera de las 3 páginas de Itaú.
+Eso es todo. El script se activará automáticamente al visitar cualquiera de las páginas soportadas.
 
 ### Cambiar entre test y prod
 
@@ -140,6 +145,11 @@ accounts: {
 
 1. Agrega las directivas `@match` y `@require` en el header del script para las URLs y módulos del nuevo banco.
 
+### Nota para BCI
+
+El match actual de BCI usa `https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*`, que es una ruta genérica.  
+Por eso el módulo `scripts/bci/cuenta-corriente.js` valida en runtime la firma de la tabla (`Fecha`, `Descripcion`, `Cargo`, `Abono`) antes de inyectar botones y sincronizar.
+
 ## Publicar en GitHub Pages
 
 Si haces un fork o creas tu propio repo:
@@ -158,6 +168,7 @@ Con eso quedarán disponibles:
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-nacional.js`
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-nacional-facturado.js`
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-internacional.js`
+- `https://<usuario>.github.io/<repo>/scripts/bci/cuenta-corriente.js`
 
 Si usas tu propio fork, actualiza las URLs `@require` en el loader.
 
@@ -286,6 +297,7 @@ Las tablas del sitio de Itaú tienen distinto comportamiento de paginación:
 | `tarjeta-nacional.js` | Compras en pesos | Sí | No |
 | `tarjeta-internacional.js` | Compras en dólares | Sí | No |
 | `tarjeta-nacional-facturado.js` | Estado de cuenta facturado | No | Sí |
+| `scripts/bci/cuenta-corriente.js` | Movimientos cuenta corriente BCI | Sí | No |
 
 Cuando una tabla está paginada, el DOM solo muestra una página a la vez. Si se compararan las transacciones de YNAB contra esa vista parcial, las transacciones de otras páginas se marcarían erróneamente como "no aparece en extracto".
 

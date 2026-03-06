@@ -18,6 +18,12 @@
 - `skipMarkNotInBank: true` is used for paginated tables (can't reliably detect "not in bank" from partial DOM).
 - `skipReconciled: true` is used for facturado (non-paginated) to avoid flagging already-verified transactions. Must be passed in BOTH `buildYNABPreviewRows` AND `runSyncYNAB` calls — the lib's `runSyncYNAB` also checks this flag when building the `soloEnYNAB` list.
 
+## BCI Integration Notes
+
+- BCI currently routes through a generic URL (`/cl/bci/aplicaciones/contenido.jsf`), so module init must verify page-specific DOM signatures before injecting/syncing.
+- The BCI movements table is paginated (`app-pagination`), so BCI modules should pass `skipMarkNotInBank: true` in both preview and sync flows.
+- The available BCI DOM snapshot does not expose a stable shared action bar; first implementation injects a dedicated local actions container next to the movements table.
+
 ## Matching Logic (two-pass: exact → fuzzy)
 
 - YNAB transactions created via API or file import have `import_id` (e.g. `YNAB:-50000000:2026-01-23:1`).
