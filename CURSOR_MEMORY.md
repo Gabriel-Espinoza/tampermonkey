@@ -23,6 +23,7 @@
 - BCI currently routes through a generic URL (`/cl/bci/aplicaciones/contenido.jsf`), so module init must verify page-specific DOM signatures before injecting/syncing.
 - The BCI movements table is paginated (`app-pagination`), so BCI modules should pass `skipMarkNotInBank: true` in both preview and sync flows.
 - The available BCI DOM snapshot does not expose a stable shared action bar; first implementation injects a dedicated local actions container next to the movements table.
+- BCI may render content asynchronously under the same URL; the module benefits from diagnostic logs plus a `MutationObserver` fallback to detect the table after initial load.
 
 ## Matching Logic (two-pass: exact → fuzzy)
 

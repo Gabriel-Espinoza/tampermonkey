@@ -15,6 +15,23 @@
 
     var TABLE_SELECTOR = 'table.table.striped-table.border-table';
     var ACTIONS_ID = 'ynab-bci-actions';
+    var LOG_PREFIX = '[BCI cuenta corriente]';
+    var observer = null;
+    var observerTimer = null;
+    var scheduledAttempt = null;
+    var hasInjected = false;
+
+    function log() {
+      var args = Array.prototype.slice.call(arguments);
+      args.unshift(LOG_PREFIX);
+      console.log.apply(console, args);
+    }
+
+    function warn() {
+      var args = Array.prototype.slice.call(arguments);
+      args.unshift(LOG_PREFIX);
+      console.warn.apply(console, args);
+    }
 
     function normalizeText(value) {
       return String(value || '')
@@ -29,6 +46,17 @@
         headerText.indexOf('descripcion') !== -1 &&
         headerText.indexOf('cargo') !== -1 &&
         headerText.indexOf('abono') !== -1;
+    }
+
+    function getHeaderSummary(table) {
+      var spans = table.querySelectorAll('thead th span, thead th');
+      var out = [];
+      for (var i = 0; i < spans.length; i++) {
+        var text = normalizeText((spans[i].textContent || '').trim());
+        if (!text) continue;
+        out.push(text.replace(/\s+/g, ' ').slice(0, 40));
+      }
+      return out;
     }
 
     function getCellText(row, idx) {
@@ -68,6 +96,10 @@
       return datos;
     }
 
+    function getCandidateTables() {
+      return document.querySelectorAll(TABLE_SELECTOR);
+    }
+
     function ensureActionsContainer(table) {
       var existing = document.getElementById(ACTIONS_ID);
       if (existing) return existing;
@@ -89,8 +121,14 @@
 
     async function waitForMovimientosTable() {
       var table = await Lib.waitForElement(TABLE_SELECTOR, 40);
-      if (!table) return null;
-      if (!hasExpectedHeaders(table)) return null;
+      if (!table) {
+        warn('waitForElement no encontro tabla con selector:', TABLE_SELECTOR);
+        return null;
+      }
+      if (!hasExpectedHeaders(table)) {
+        warn('Se encontro una tabla, pero no coincide con headers esperados:', getHeaderSummary(table));
+        return null;
+      }
       return table;
     }
 
@@ -143,8 +181,17 @@
     }
 
     function injectButtons(table) {
+      if (document.querySelector('#' + ACTIONS_ID + ' [data-bci-csv-injected]') &&
+          document.querySelector('#' + ACTIONS_ID + ' [data-bci-ynab-injected]')) {
+        hasInjected = true;
+        log('Los botones BCI ya estaban inyectados.');
+        return true;
+      }
       var actions = ensureActionsContainer(table);
-      if (!actions) return;
+      if (!actions) {
+        warn('No fue posible crear/encontrar el contenedor de acciones.');
+        return false;
+      }
       var selector = '#' + ACTIONS_ID;
       Lib.injectButton([
         {
@@ -164,12 +211,85 @@
           linkHtml: 'Sincronizar con YNAB'
         }
       ], runSyncYNAB);
+      hasInjected = true;
+      log('Botones inyectados correctamente. Filas detectadas:', extractMovimientos(table).length);
+      return true;
+    }
+
+    function tryInject(source) {
+      log('Intentando inyectar desde:', source, 'URL:', window.location.href, 'readyState:', document.readyState);
+      var tables = getCandidateTables();
+      log('Tablas candidatas encontradas:', tables.length);
+      if (!tables.length) return false;
+      for (var i = 0; i < tables.length; i++) {
+        var table = tables[i];
+        var headers = getHeaderSummary(table);
+        var matches = hasExpectedHeaders(table);
+        log('Tabla candidata #' + (i + 1) + ' headers:', headers, 'matchEsperado:', matches);
+        if (!matches) continue;
+        return injectButtons(table);
+      }
+      return false;
+    }
+
+    function stopObserver(reason) {
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
+      if (observerTimer) {
+        clearTimeout(observerTimer);
+        observerTimer = null;
+      }
+      if (scheduledAttempt) {
+        clearTimeout(scheduledAttempt);
+        scheduledAttempt = null;
+      }
+      if (reason) log('Observer detenido:', reason);
+    }
+
+    function scheduleRetry(reason) {
+      if (hasInjected || scheduledAttempt) return;
+      scheduledAttempt = setTimeout(function () {
+        scheduledAttempt = null;
+        var injected = tryInject('mutation:' + reason);
+        if (injected) stopObserver('inyeccion completada');
+      }, 150);
+    }
+
+    function startObserver() {
+      if (observer || hasInjected) return;
+      if (!document.body) {
+        warn('document.body aun no existe; no se puede iniciar MutationObserver.');
+        return;
+      }
+      observer = new MutationObserver(function (mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          if (mutations[i].addedNodes && mutations[i].addedNodes.length) {
+            scheduleRetry('addedNodes');
+            return;
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      observerTimer = setTimeout(function () {
+        stopObserver('timeout 60s');
+      }, 60000);
+      log('MutationObserver iniciado para detectar carga asincrona de la tabla.');
     }
 
     (async function boot() {
+      log('Init BCI. accountId configurado:', !!YNAB_ACCOUNT_ID, 'selector tabla:', TABLE_SELECTOR);
       var table = await waitForMovimientosTable();
       if (!table) {
-        console.warn('[BCI cuenta corriente] DOM no compatible, no se inyectan botones.');
+        warn('DOM no compatible en carga inicial; se activara observacion de mutaciones.');
+        if (document.readyState !== 'complete') {
+          window.addEventListener('load', function () {
+            tryInject('window.load');
+          }, { once: true });
+        }
+        tryInject('boot-fallback');
+        startObserver();
         return;
       }
       injectButtons(table);
