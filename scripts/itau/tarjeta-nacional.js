@@ -13,29 +13,12 @@
     var YNAB_BUDGET_ID = config.budgetId || '<insert budget id here>';
     var YNAB_ACCOUNT_ID = config.accountId || '<insert account id here>';
 
-    var MAX_ATTEMPTS = 25;
-    var INTERVAL_MS = 400;
+    // ── Accumulator state ──────────────────────────────────────────────────
+    var accumulatedRows = [];
+    var seenPageFingerprints = {};
+    var INDICATOR_ID = 'itau-tn-acum-indicator';
 
-    function waitForMovimientos() {
-      var attempts = 0;
-      return new Promise(function (resolve) {
-        function tick() {
-          var table = document.querySelector('table.gridTable tbody') || document.querySelector('table[name="record_Table"] tbody');
-          var rows = table ? table.querySelectorAll('tr[name="DataContainer"]') : [];
-          if (rows.length > 0) {
-            resolve(table);
-            return;
-          }
-          attempts += 1;
-          if (attempts >= MAX_ATTEMPTS) {
-            resolve(null);
-            return;
-          }
-          setTimeout(tick, INTERVAL_MS);
-        }
-        tick();
-      });
-    }
+    // ── Table helpers ──────────────────────────────────────────────────────
 
     function getCellText(row, tdName, innerSelector) {
       var td = row.querySelector('td[name="' + tdName + '"]');
@@ -78,18 +61,56 @@
       return out;
     }
 
+    // ── Accumulator helpers ────────────────────────────────────────────────
+
+    function rowFingerprint(d) {
+      return [d.fecha, d.fechaPosteo, d.descripcion, d.ciudad, d.monto].join('|');
+    }
+
+    function captureCurrentPage() {
+      var table = document.querySelector('table.gridTable tbody')
+                || document.querySelector('table[name="record_Table"] tbody');
+      if (!table) return 0;
+      var datos = extractMovimientos(table);
+      if (datos.length === 0) return 0;
+
+      var fp = datos.map(rowFingerprint).join('\n');
+      if (seenPageFingerprints[fp]) return 0;
+
+      seenPageFingerprints[fp] = true;
+      accumulatedRows = accumulatedRows.concat(datos);
+      return datos.length;
+    }
+
+    // ── Indicator helpers ──────────────────────────────────────────────────
+
+    function ensureIndicator() {
+      if (document.getElementById(INDICATOR_ID)) return;
+      var ul = document.querySelector('#divBotones #contenedorULBotones');
+      if (!ul) return;
+      var li = document.createElement('li');
+      li.id = INDICATOR_ID;
+      li.style.cssText = 'display:inline-block; padding:6px 12px; font-size:13px; color:#555; font-weight:bold;';
+      li.textContent = '0 mov. capturados';
+      ul.appendChild(li);
+    }
+
+    function updateIndicator() {
+      var el = document.getElementById(INDICATOR_ID);
+      if (!el) return;
+      el.textContent = accumulatedRows.length + ' mov. capturados';
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────
+
     async function runDownload() {
-      var tbody = await waitForMovimientos();
-      if (!tbody) {
-        console.warn('[Itaú tarjeta nacional] No se encontró la tabla de movimientos.');
+      captureCurrentPage();
+      updateIndicator();
+      if (accumulatedRows.length === 0) {
+        alert('No hay movimientos capturados. Navega por las páginas de la tabla.');
         return;
       }
-      var datos = extractMovimientos(tbody);
-      if (datos.length === 0) {
-        alert('No hay movimientos en la tabla.');
-        return;
-      }
-      var normalized = toNormalizedMovimientos(datos);
+      var normalized = toNormalizedMovimientos(accumulatedRows);
       var movimientos = Lib.buildMovimientosWithImportIds(normalized);
       var result = await Lib.buildYNABPreviewRows(movimientos, {
         accessToken: YNAB_ACCESS_TOKEN,
@@ -108,17 +129,13 @@
     }
 
     async function runSyncYNAB() {
-      var tbody = await waitForMovimientos();
-      if (!tbody) {
-        alert('No se encontró la tabla de movimientos.');
+      captureCurrentPage();
+      updateIndicator();
+      if (accumulatedRows.length === 0) {
+        alert('No hay movimientos capturados. Navega por las páginas de la tabla.');
         return;
       }
-      var datos = extractMovimientos(tbody);
-      if (datos.length === 0) {
-        alert('No hay movimientos en la tabla.');
-        return;
-      }
-      var normalized = toNormalizedMovimientos(datos);
+      var normalized = toNormalizedMovimientos(accumulatedRows);
       var movimientos = Lib.buildMovimientosWithImportIds(normalized);
       await Lib.runSyncYNAB(movimientos, {
         accessToken: YNAB_ACCESS_TOKEN,
@@ -127,6 +144,8 @@
         skipMarkNotInBank: true
       });
     }
+
+    // ── Button containers ──────────────────────────────────────────────────
 
     var csvContainers = [
       {
@@ -149,11 +168,34 @@
       }
     ];
 
+    // ── Boot ───────────────────────────────────────────────────────────────
+
     (async function boot() {
       var footer = await Lib.waitForElement('#divBotones');
       if (!footer) return;
-      Lib.injectButton(csvContainers, runDownload);
-      Lib.injectButton(ynabContainers, runSyncYNAB);
+
+      function injectAll() {
+        Lib.injectButton(csvContainers, runDownload);
+        Lib.injectButton(ynabContainers, runSyncYNAB);
+        ensureIndicator();
+        updateIndicator();
+      }
+
+      injectAll();
+      captureCurrentPage();
+      updateIndicator();
+
+      var scheduled = null;
+      var observer = new MutationObserver(function () {
+        if (scheduled) return;
+        scheduled = setTimeout(function () {
+          scheduled = null;
+          injectAll();
+          var added = captureCurrentPage();
+          if (added > 0) updateIndicator();
+        }, 300);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
     })();
   }
 
