@@ -165,6 +165,7 @@ Por eso el loader hace match en las tres URLs, y el módulo `scripts/bci/cuenta-
 - **Fechas:** el sitio a veces deja la celda **Fecha** vacía en filas adicionales del mismo día; el módulo **arrastra** la última fecha `dd/MM/yyyy` válida.
 - **Signo del monto:** si el texto no trae `-`/`+`, se usa una lista de palabras clave en el detalle (p. ej. `PAGO`, `MONTO CANCELADO`) para tratar la fila como abono. Revisa el CSV de diagnóstico la primera vez y ajusta el módulo si aparecen comercios ambiguos.
 - También reconoce la variante con columnas **Monto cargo** / **Monto abono** (misma tabla Material) usando `parseChilePesoToMilli` para cadenas con signo.
+- **Cuotas sin marca en el DOM:** Santander no expone columna tipo Itaú (`01/12`). Si un **cargo** tiene fecha **al menos ~50 días** anterior a la **fecha más reciente** de la tabla (p. ej. MAC ONLINE con compra vieja en un extracto de febrero 2026), el script asume cuota: ajusta la fecha YNAB al **día 1 del mes** de esa fecha máxima y añade memo `[Santander: compra DD/MM/YYYY, cuota estim.]`. Se excluyen heurísticamente filas tipo saldo inicial / intereses / comisión. Ajusta `CUOTA_MIN_DAY_GAP` en el módulo si en tu caso hay falsos positivos.
 
 ## Publicar en GitHub Pages
 

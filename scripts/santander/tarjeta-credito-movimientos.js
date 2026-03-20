@@ -6,6 +6,23 @@
   var DATE_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
   var BILL_HASH_RE = /Saldos_TC\/main\/bill/;
 
+  /**
+   * Cargo cuya fecha de compra está muy por debajo de la fecha más reciente del extracto
+   * se trata como cuota (el banco no marca cuota en el DOM). Se reasigna dateNorm al 1er día
+   * del mes de esa fecha de referencia y se deja la fecha original en memo.
+   */
+  var CUOTA_MIN_DAY_GAP = 50;
+
+  var CUOTA_HEURISTIC_SKIP_DETAIL = [
+    'SALDO INICIAL',
+    'INTERESES',
+    'INTERÉS',
+    'COMISION',
+    'COMISIÓN',
+    'CAE',
+    'IVA'
+  ];
+
   /** Detalle que suele ser abono / reducción de deuda (flujo positivo en cuenta tarjeta YNAB). */
   var CREDIT_DETAIL_KEYWORDS = [
     'PAGO',
@@ -262,6 +279,70 @@
       return datos;
     }
 
+    function daysBetweenIso(isoA, isoB) {
+      var a = new Date(isoA + 'T00:00:00');
+      var b = new Date(isoB + 'T00:00:00');
+      if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
+      return Math.round(Math.abs(a - b) / 86400000);
+    }
+
+    function firstOfMonthIso(isoYmd) {
+      var p = String(isoYmd || '').split('-');
+      if (p.length < 2) return isoYmd;
+      return p[0] + '-' + p[1] + '-01';
+    }
+
+    function skipCuotaHeuristicForDetail(detail) {
+      var n = normalizeText(detail);
+      for (var i = 0; i < CUOTA_HEURISTIC_SKIP_DETAIL.length; i++) {
+        if (n.indexOf(normalizeText(CUOTA_HEURISTIC_SKIP_DETAIL[i])) !== -1) return true;
+      }
+      return false;
+    }
+
+    /**
+     * Sin columna "cuota" en Santander: cargos con fecha muy anterior al último movimiento
+     * del listado se alinean al mes de facturación observado (ancla = primer día del mes de esa fecha máxima).
+     */
+    function applySantanderCuotaDateHeuristic(normalizedRows) {
+      if (!normalizedRows || normalizedRows.length === 0) return;
+      var refNorm = '';
+      for (var r = 0; r < normalizedRows.length; r++) {
+        var dn = Lib.normalizeDate(normalizedRows[r].fecha);
+        if (dn && (!refNorm || dn > refNorm)) refNorm = dn;
+      }
+      if (!refNorm) return;
+      var anchor = firstOfMonthIso(refNorm);
+      var adjusted = 0;
+      for (var j = 0; j < normalizedRows.length; j++) {
+        var d = normalizedRows[j];
+        if (d.amountMilli == null || d.amountMilli >= 0) continue;
+        if (skipCuotaHeuristicForDetail(d.movimientos || '')) continue;
+        var rowNorm = Lib.normalizeDate(d.fecha);
+        if (!rowNorm || rowNorm >= refNorm) continue;
+        var gap = daysBetweenIso(rowNorm, refNorm);
+        if (gap < CUOTA_MIN_DAY_GAP) continue;
+        d.dateNorm = anchor;
+        var orig = String(d.fecha || '').trim();
+        var tag = '[Santander: compra ' + orig + ', cuota estim.]';
+        d.memo = d.memo ? d.memo + ' ' + tag : tag;
+        adjusted += 1;
+      }
+      if (adjusted > 0) {
+        log(
+          'Heurística cuota:',
+          adjusted,
+          'cargo(s) con fecha YNAB',
+          anchor,
+          '(referencia extracto',
+          refNorm +
+            ', gap≥' +
+            CUOTA_MIN_DAY_GAP +
+            ' d vs última fecha; DOM sin marca de cuota)'
+        );
+      }
+    }
+
     function normalizeRowForImport(d) {
       if (d.amountMilli != null) return d;
       var cargo = d.cargos || '';
@@ -286,6 +367,7 @@
 
     function buildMovimientosWithIds(datos) {
       var normalized = datos.map(normalizeRowForImport);
+      applySantanderCuotaDateHeuristic(normalized);
       return Lib.buildMovimientosWithImportIds(normalized);
     }
 
@@ -498,11 +580,14 @@
         var match = await waitForMovimientosTable();
         if (!isBillRoute()) return;
         if (match) {
-          injectButtons(match.table, match.doc);
-          stopWatching('inyección tras espera inicial');
-          return;
+          if (injectButtons(match.table, match.doc)) {
+            stopWatching('inyección tras espera inicial');
+            return;
+          }
+          warn('Tabla encontrada pero no se pudo inyectar botones; se mantiene poll/observers.');
+        } else {
+          warn('Tabla no encontrada al inicio; reintentos y observer.');
         }
-        warn('Tabla no encontrada al inicio; reintentos y observer.');
         if (document.readyState !== 'complete') {
           window.addEventListener(
             'load',
