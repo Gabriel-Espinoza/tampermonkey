@@ -5,6 +5,7 @@
 // @description  Loader privado unificado: un solo script con todas las credenciales YNAB. Carga lógica pública desde GitHub Pages.
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/cuentas/cuenta-corriente/saldos/*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-pesos*
+// @include      /^https:\/\/banco\.itau\.cl\/wps\/myportal\/newolb\/web\/tarjeta-credito\/resumen\/deuda\//
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-en-dolares*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/cuenta-nacional*
 // @match        https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*
@@ -42,6 +43,7 @@
   const ROUTES = [
     { pattern: /cuenta-corriente\/saldos/, module: 'ItauCuentaCorriente',           bank: 'itau', account: 'cc' },
     { pattern: /cuenta-nacional/,          module: 'ItauTarjetaNacionalFacturado',  bank: 'itau', account: 'nacional' },
+    { pattern: /tarjeta-credito\/resumen\/deuda/, module: 'ItauTarjetaNacional', bank: 'itau', account: 'nacional' },
     { pattern: /compras-pesos/,            module: 'ItauTarjetaNacional',           bank: 'itau', account: 'nacional' },
     { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional',      bank: 'itau', account: 'internacional' },
     { pattern: /bci\.cl\/cl\/bci\/aplicaciones\/contenido\.jsf/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },

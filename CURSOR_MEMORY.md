@@ -14,6 +14,7 @@
 
 ## Key Patterns
 
+- **Itaú tarjeta nacional (no facturada):** el sitio usa `.../tarjeta-credito/resumen/deuda/...` (portal con muchos segmentos de path tras `deuda/`). El loader debe usar `@include` con regex (no basta un `@match .../deuda/*` de una sola estrella entre barras). La inyección de botones alinea con cuenta corriente: `#divBotones #desktop-botones .d-flex.flex-row` y `#divBotones .dropdown-menu`; el layout nuevo ya no incluye `#contenedorULBotones`.
 - Config options flow from the module script → `buildYNABPreviewRows` / `runSyncYNAB` in lib.js.
 - `skipMarkNotInBank: true` is used for paginated tables (can't reliably detect "not in bank" from partial DOM).
 - `skipReconciled: true` is used for facturado (non-paginated) to avoid flagging already-verified transactions. Must be passed in BOTH `buildYNABPreviewRows` AND `runSyncYNAB` calls — the lib's `runSyncYNAB` also checks this flag when building the `soloEnYNAB` list.

@@ -86,13 +86,13 @@
 
     function ensureIndicator() {
       if (document.getElementById(INDICATOR_ID)) return;
-      var ul = document.querySelector('#divBotones #contenedorULBotones');
-      if (!ul) return;
-      var li = document.createElement('li');
-      li.id = INDICATOR_ID;
-      li.style.cssText = 'display:inline-block; padding:6px 12px; font-size:13px; color:#555; font-weight:bold;';
-      li.textContent = '0 mov. capturados';
-      ul.appendChild(li);
+      var footer = document.querySelector('#divBotones');
+      if (!footer) return;
+      var div = document.createElement('div');
+      div.id = INDICATOR_ID;
+      div.style.cssText = 'padding:6px 12px; font-size:13px; color:#555; font-weight:bold;';
+      div.textContent = '0 mov. capturados';
+      footer.insertBefore(div, footer.firstChild);
     }
 
     function updateIndicator() {
@@ -149,22 +149,38 @@
 
     var csvContainers = [
       {
-        selector: '#divBotones #contenedorULBotones',
+        selector: '#divBotones #desktop-botones .d-flex.flex-row',
         dataId: 'itau-tn-csv',
-        wrapTag: 'li',
         wrapName: 'contenedorCSV',
-        linkClass: 'boton-barra wpfBlueButton',
-        linkHtml: 'Descargar CSV'
+        linkName: 'botonCSV',
+        linkClass: 'boton-item',
+        linkHtml: '<i class="icon-itaufonts_full_excel sizeXS"></i><p class="ml-3 ml-sm-0">Descargar CSV</p>'
+      },
+      {
+        selector: '#divBotones .dropdown-menu',
+        dataId: 'itau-tn-csv',
+        wrapName: 'contenedorCSV',
+        linkName: 'botonCSV',
+        linkClass: 'dropdown-item',
+        linkHtml: '<div class="boton-tabla d-flex flex-row justify-content-between"><i class="icon-itaufonts_full_excel sizeXS"></i><p>Descargar CSV</p></div>'
       }
     ];
     var ynabContainers = [
       {
-        selector: '#divBotones #contenedorULBotones',
+        selector: '#divBotones #desktop-botones .d-flex.flex-row',
         dataId: 'itau-tn-ynab',
-        wrapTag: 'li',
         wrapName: 'contenedorYNAB',
-        linkClass: 'boton-barra wpfBlueButton',
-        linkHtml: 'Sincronizar con YNAB'
+        linkName: 'botonYNAB',
+        linkClass: 'boton-item',
+        linkHtml: '<i class="icon-itaufonts_full_excel sizeXS"></i><p class="ml-3 ml-sm-0">Sincronizar con YNAB</p>'
+      },
+      {
+        selector: '#divBotones .dropdown-menu',
+        dataId: 'itau-tn-ynab',
+        wrapName: 'contenedorYNAB',
+        linkName: 'botonYNAB',
+        linkClass: 'dropdown-item',
+        linkHtml: '<div class="boton-tabla d-flex flex-row justify-content-between"><i class="icon-itaufonts_full_excel sizeXS"></i><p>Sincronizar con YNAB</p></div>'
       }
     ];
 

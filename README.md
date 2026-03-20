@@ -200,7 +200,8 @@ Si necesitas crearla para mantenimiento de selectores:
   ```
 2. Navega a cada página de Itaú en el navegador, abre DevTools (F12), copia el HTML del contenedor de la tabla de movimientos y guárdalo:
   - **Cuenta corriente** (saldos) → `dom examples/itau_dom.html`
-  - **Tarjeta crédito - compras pesos** → `dom examples/itau_creditcard_nacional_dom.html`
+  - **Tarjeta crédito - resumen deuda (movimientos no facturados, CLP)** → `dom examples/itau_creditcard_nacional_dom.html`  
+    (URL del sitio: `.../tarjeta-credito/resumen/deuda/...`; el loader usa `@include` con regex porque el path del portal lleva varios segmentos tras `deuda/`.)
   - **Tarjeta crédito - compras dólares** → `dom examples/itau_creditcard_inter_dom.html`
   - **Tarjeta crédito - estado de cuenta facturado (cuenta nacional)** → `dom examples/itau_creditcard_facturado_nacional.html`
 
@@ -296,7 +297,7 @@ Las tablas del sitio de Itaú tienen distinto comportamiento de paginación:
 | Módulo | Página | ¿Paginada? | Marca "no en banco" |
 | --- | --- | --- | --- |
 | `cuenta-corriente.js` | Saldos cuenta corriente | Sí | No |
-| `tarjeta-nacional.js` | Compras en pesos | Sí | No |
+| `tarjeta-nacional.js` | Resumen deuda / movimientos no facturados (CLP) | Sí | No |
 | `tarjeta-internacional.js` | Compras en dólares | Sí | No |
 | `tarjeta-nacional-facturado.js` | Estado de cuenta facturado | No | Sí |
 | `scripts/bci/cuenta-corriente.js` | Movimientos cuenta corriente BCI | Sí | No |
@@ -311,4 +312,5 @@ El módulo `tarjeta-nacional-facturado` no pasa esta opción porque su tabla mue
 
 - Si Itaú cambia el DOM, actualiza selectores en los módulos de `scripts/itau/`.
 - Usa `dom examples/` como referencia para ajustar selectores.
+- **Itaú TC nacional (no facturada):** la ruta vive bajo `tarjeta-credito/resumen/deuda/` (no solo `compras-pesos`). La botonera comparte el patrón de cuenta corriente (`#divBotones #desktop-botones .d-flex.flex-row` y `#divBotones .dropdown-menu`), no `#contenedorULBotones`.
 
