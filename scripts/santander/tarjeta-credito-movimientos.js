@@ -37,10 +37,14 @@
     var YNAB_ACCOUNT_ID = config.accountId || '<insert account id here>';
 
     var observers = [];
-    var observerTimer = null;
+    var pollTimer = null;
     var scheduledAttempt = null;
     var hasInjected = false;
     var observedDocuments = [];
+
+    var WAIT_ATTEMPTS = 120;
+    var WAIT_MS = 400;
+    var POLL_MS = 2000;
 
     function log() {
       var a = Array.prototype.slice.call(arguments);
@@ -87,6 +91,77 @@
         }
       }
       return docs;
+    }
+
+    /** Iframes cuyo documento aún no existe (carga async); se reengancha en `load`. */
+    function wireIframeLoadHooks() {
+      var iframes = document.querySelectorAll('iframe');
+      for (var i = 0; i < iframes.length; i++) {
+        var frame = iframes[i];
+        if (frame.getAttribute('data-ynab-santander-iframe-hook')) continue;
+        frame.setAttribute('data-ynab-santander-iframe-hook', '1');
+        frame.addEventListener(
+          'load',
+          function () {
+            if (!isBillRoute() || hasInjected) return;
+            setTimeout(function () {
+              tryInject('iframe-load');
+              observeNewDocuments();
+            }, 200);
+          },
+          { capture: false }
+        );
+      }
+    }
+
+    function observeNewDocuments() {
+      if (!isBillRoute() || hasInjected) return;
+      var docs = getSearchDocuments();
+      for (var d = 0; d < docs.length; d++) {
+        var doc = docs[d];
+        if (observedDocuments.indexOf(doc) !== -1) continue;
+        if (!doc.body) continue;
+        var observer = new MutationObserver(function (mutations) {
+          for (var i = 0; i < mutations.length; i++) {
+            if (mutations[i].addedNodes && mutations[i].addedNodes.length) {
+              wireIframeLoadHooks();
+              scheduleRetry('addedNodes');
+              return;
+            }
+          }
+        });
+        observer.observe(doc.body, { childList: true, subtree: true });
+        observers.push(observer);
+        observedDocuments.push(doc);
+        log('MutationObserver en', getDocumentLabel(doc));
+      }
+    }
+
+    function startPoll() {
+      if (pollTimer || !isBillRoute() || hasInjected) return;
+      pollTimer = setInterval(function () {
+        if (!isBillRoute()) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          return;
+        }
+        if (hasInjected) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          return;
+        }
+        wireIframeLoadHooks();
+        observeNewDocuments();
+        tryInject('interval-poll');
+      }, POLL_MS);
+      log('Polling cada', POLL_MS / 1000, 's hasta encontrar tabla o salir de la vista');
+    }
+
+    function stopPoll() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
     }
 
     function isBillRoute() {
@@ -232,18 +307,23 @@
       var attempts = 0;
       return new Promise(function (resolve) {
         function tick() {
+          wireIframeLoadHooks();
           var match = findMovimientosTable();
           if (match) {
             resolve(match);
             return;
           }
           attempts += 1;
-          if (attempts >= 40) {
-            warn('No se encontró tabla Santander TC en documento ni iframes.');
+          if (attempts >= WAIT_ATTEMPTS) {
+            warn(
+              'Tras',
+              attempts * WAIT_MS / 1000,
+              's no hay tabla; se sigue observando DOM + polling (carga async / iframes).'
+            );
             resolve(null);
             return;
           }
-          setTimeout(tick, 400);
+          setTimeout(tick, WAIT_MS);
         }
         tick();
       });
@@ -366,21 +446,9 @@
       log('Intento inyección:', source);
       var match = findMovimientosTable();
       if (!match) return false;
-      return injectButtons(match.table, match.doc);
-    }
-
-    function stopObserver(reason) {
-      for (var i = 0; i < observers.length; i++) observers[i].disconnect();
-      observers = [];
-      if (observerTimer) {
-        clearTimeout(observerTimer);
-        observerTimer = null;
-      }
-      if (scheduledAttempt) {
-        clearTimeout(scheduledAttempt);
-        scheduledAttempt = null;
-      }
-      if (reason) log('Observer detenido:', reason);
+      var ok = injectButtons(match.table, match.doc);
+      if (ok) stopWatching('inyección (' + source + ')');
+      return ok;
     }
 
     function scheduleRetry(reason) {
@@ -388,38 +456,32 @@
       scheduledAttempt = setTimeout(function () {
         scheduledAttempt = null;
         if (!isBillRoute()) return;
-        if (tryInject('mutation:' + reason)) stopObserver('inyección ok');
+        tryInject('mutation:' + reason);
       }, 150);
     }
 
-    function startObserver() {
+    /** Observadores + hooks en iframes nuevos + poll (sin tope fijo: hasta inyectar o teardown). */
+    function startAsyncWatch() {
       if (!isBillRoute() || hasInjected) return;
-      var docs = getSearchDocuments();
-      for (var d = 0; d < docs.length; d++) {
-        var doc = docs[d];
-        if (observedDocuments.indexOf(doc) !== -1) continue;
-        if (!doc.body) continue;
-        var observer = new MutationObserver(function (mutations) {
-          for (var i = 0; i < mutations.length; i++) {
-            if (mutations[i].addedNodes && mutations[i].addedNodes.length) {
-              scheduleRetry('addedNodes');
-              return;
-            }
-          }
-        });
-        observer.observe(doc.body, { childList: true, subtree: true });
-        observers.push(observer);
-        observedDocuments.push(doc);
-        log('MutationObserver en', getDocumentLabel(doc));
+      wireIframeLoadHooks();
+      observeNewDocuments();
+      startPoll();
+    }
+
+    function stopWatching(reason) {
+      for (var i = 0; i < observers.length; i++) observers[i].disconnect();
+      observers = [];
+      stopPoll();
+      if (scheduledAttempt) {
+        clearTimeout(scheduledAttempt);
+        scheduledAttempt = null;
       }
-      observerTimer = setTimeout(function () {
-        stopObserver('timeout 60s');
-      }, 60000);
+      if (reason) log('Watch detenido:', reason);
     }
 
     function teardown() {
       removeActionsFromAllDocs();
-      stopObserver('');
+      stopWatching('');
       hasInjected = false;
       scheduledAttempt = null;
       observedDocuments = [];
@@ -437,6 +499,7 @@
         if (!isBillRoute()) return;
         if (match) {
           injectButtons(match.table, match.doc);
+          stopWatching('inyección tras espera inicial');
           return;
         }
         warn('Tabla no encontrada al inicio; reintentos y observer.');
@@ -450,11 +513,14 @@
           );
         }
         tryInject('boot-fallback');
-        startObserver();
+        startAsyncWatch();
       })();
     }
 
     window.addEventListener('hashchange', function () {
+      setTimeout(applyRoute, 0);
+    });
+    window.addEventListener('popstate', function () {
       setTimeout(applyRoute, 0);
     });
     applyRoute();

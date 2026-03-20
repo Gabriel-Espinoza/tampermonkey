@@ -161,6 +161,7 @@ Por eso el loader hace match en las tres URLs, y el módulo `scripts/bci/cuenta-
 
 - **URL shell:** `https://mibanco.santander.cl/UI.Web.HB/Private_new/frame/*`. Tampermonkey `@match` no usa el fragmento `#...`; el loader hace match al path del frame y el módulo solo actúa cuando `location.hash` contiene `Saldos_TC/main/bill` (movimientos facturados / vista con columna **Monto** única).
 - **Iframe:** el contenido puede vivir en un iframe; el módulo busca la tabla `table.mat-table` en el documento principal y en iframes accesibles (mismo patrón que BCI).
+- **Carga asíncrona:** si la tabla tarda o el iframe se monta después, el módulo sigue intentando con `MutationObserver`, listeners `load` en iframes y un **polling** cada 2 s mientras estés en la vista bill (consola: `[Santander TC]`). Si el iframe fuera de otro origen, el top no puede leer su DOM.
 - **Fechas:** el sitio a veces deja la celda **Fecha** vacía en filas adicionales del mismo día; el módulo **arrastra** la última fecha `dd/MM/yyyy` válida.
 - **Signo del monto:** si el texto no trae `-`/`+`, se usa una lista de palabras clave en el detalle (p. ej. `PAGO`, `MONTO CANCELADO`) para tratar la fila como abono. Revisa el CSV de diagnóstico la primera vez y ajusta el módulo si aparecen comercios ambiguos.
 - También reconoce la variante con columnas **Monto cargo** / **Monto abono** (misma tabla Material) usando `parseChilePesoToMilli` para cadenas con signo.
