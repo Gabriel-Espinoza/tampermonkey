@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YNAB Bank Sync - Loader unificado
 // @namespace    https://banco.itau.cl/
-// @version      1.0
+// @version      1.1
 // @description  Loader privado unificado: un solo script con todas las credenciales YNAB. Carga lógica pública desde GitHub Pages.
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/cuentas/cuenta-corriente/saldos/*
 // @match        https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-pesos*
@@ -11,6 +11,7 @@
 // @match        https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*
 // @match        https://www.bci.cl/svcRest/infraestructura/seguridad/servlet/TokenAutorizacion*
 // @match        https://personas.bci.cl/nuevaWeb/fe-saldosultimosmovpersonas/*
+// @match        https://mibanco.santander.cl/UI.Web.HB/Private_new/frame/*
 // @grant        GM_xmlhttpRequest
 // @connect      api.ynab.com
 // @require      https://gabriel-espinoza.github.io/tampermonkey/shared/lib.js
@@ -20,6 +21,7 @@
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-nacional-facturado.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-internacional.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/bci/cuenta-corriente.js
+// @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/santander/tarjeta-credito-movimientos.js
 // ==/UserScript==
 
 (function () {
@@ -36,6 +38,9 @@
       },
       bci: {
         bci_caro: '<insert account id here>'
+      },
+      santander: {
+        nacional: '<insert santander nacional YNAB account id>'
       }
     }
   };
@@ -48,7 +53,8 @@
     { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional',      bank: 'itau', account: 'internacional' },
     { pattern: /bci\.cl\/cl\/bci\/aplicaciones\/contenido\.jsf/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
     { pattern: /bci\.cl\/svcRest\/infraestructura\/seguridad\/servlet\/TokenAutorizacion/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
-    { pattern: /personas\.bci\.cl\/nuevaWeb\/fe-saldosultimosmovpersonas\//, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' }
+    { pattern: /personas\.bci\.cl\/nuevaWeb\/fe-saldosultimosmovpersonas\//, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
+    { pattern: /mibanco\.santander\.cl\/UI\.Web\.HB\/Private_new\/frame\//, module: 'SantanderTarjetaCredito', bank: 'santander', account: 'nacional' }
   ];
 
   var url = window.location.href;

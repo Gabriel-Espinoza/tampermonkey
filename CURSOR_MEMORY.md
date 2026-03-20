@@ -88,3 +88,12 @@
 - `createYNABTransactionsBulk` and `updateYNABTransactionsBulk` are exported in `BankYNABLib`. The singular `createYNABTransaction` and `updateYNABTransaction` are also kept and exported for potential external use.
 - YNAB batch API: `POST /budgets/{id}/transactions` accepts `{ transactions: [...] }` for bulk create. `PATCH /budgets/{id}/transactions` (no txId in path) accepts `{ transactions: [{ id, ...fields }] }` for bulk update. `duplicate_import_ids` is at `data.data.duplicate_import_ids`, NOT under `data.data.bulk`. No documented batch size limit; chunk at 50 for safety.
 - `createYNABTransaction` and `updateYNABTransaction` are exported in `BankYNABLib` API object (lines 670-671 of shared/lib.js). Even after adding bulk variants, keep the singular functions exported for backward compatibility.
+
+## Santander Chile — tarjeta de crédito
+
+- **DOM:** `<table mat-table class="mat-table cdk-table">`, filas `tr[mat-row]`, celdas `mat-column-date`, `mat-column-detail`, y bien `mat-column-amount` (vista bill) o `mat-column-amountCharge` / `mat-column-paymentAmount` (otra pestaña). Los dumps `dom examples/santander_movimientos_tarjeta*.html` suelen ir **minificados** (casi una línea).
+- **Ruta activa:** el módulo `scripts/santander/tarjeta-credito-movimientos.js` solo inyecta si `location.hash` coincide con `Saldos_TC/main/bill`. El `@match` del loader es el path `.../Private_new/frame/*` (sin depender del hash).
+- **Fechas:** el banco puede dejar la celda fecha vacía en filas siguientes del mismo día; el parser **arrastra** la última fecha `dd/MM/yyyy` válida (`normalizeDate` en `lib.js` ya convierte ese formato).
+- **Montos:** vista bill suele mostrar monto sin signo; signo por `-`/`+` en texto o por palabras clave en detalle (PAGO, MONTO CANCELADO, etc.). Vista cargo/abono usa `normalizeRowForImport` + `parseChilePesoToMilli` para no depender del bug de `parseMilliunits` cuando el string ya trae `-`.
+- **Iframe:** buscar tabla en `document` y en `iframe.contentDocument` como BCI. Inyectar enlaces con `doc.createElement` del documento del iframe, no `Lib.injectButton` (usa `document` del top).
+- **`init` una vez:** `window.__santanderTcInitDone` evita doble registro de listeners si el loader llamara `init` dos veces.

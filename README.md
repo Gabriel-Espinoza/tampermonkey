@@ -24,6 +24,8 @@ tampermonkey/
 │   │   └── tarjeta-internacional.js
 │   └── bci/
 │       └── cuenta-corriente.js        # BCI movimientos (contenido.jsf)
+│   └── santander/
+│       └── tarjeta-credito-movimientos.js   # Santander TC (hash #/private/Saldos_TC/main/bill)
 ├── loaders/                           # Privado/local (ignorado por git)
 │   └── unified.loader.user.js        # Loader unificado (template)
 └── dom examples/                      # Ignorado por git (ver abajo)
@@ -36,7 +38,7 @@ tampermonkey/
 
 Un único loader de Tampermonkey cubre todas las cuentas de un banco. El flujo es:
 
-1. Tampermonkey detecta que estás en una URL soportada (Itaú o BCI) y ejecuta el **loader unificado**.
+1. Tampermonkey detecta que estás en una URL soportada (Itaú, BCI o Santander Chile) y ejecuta el **loader unificado**.
 2. El loader carga con `@require` la librería compartida y los módulos públicos desde GitHub Pages.
 3. Según la URL actual, el loader determina qué módulo inicializar y le pasa las credenciales correspondientes desde un bloque `CONFIG` centralizado.
 4. El módulo público extrae movimientos del DOM, ofrece descarga CSV de diagnóstico (comparando contra YNAB) y sincroniza con YNAB.
@@ -101,6 +103,9 @@ const CONFIG = {
     },
     bci: {
       bci_caro: '<insert account id here>'
+    },
+    santander: {
+      nacional: '<insert santander nacional YNAB account id>'
     }
   }
 };
@@ -152,6 +157,14 @@ accounts: {
 BCI usa una ruta contenedora genérica (`https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*`) y además carga la vista de movimientos dentro de un iframe cuya URL puede pasar por `https://www.bci.cl/svcRest/infraestructura/seguridad/servlet/TokenAutorizacion*` antes de resolver a `https://personas.bci.cl/nuevaWeb/fe-saldosultimosmovpersonas/*`.  
 Por eso el loader hace match en las tres URLs, y el módulo `scripts/bci/cuenta-corriente.js` además valida en runtime la firma de la tabla (`Fecha`, `Descripcion`, `Cargo`, `Abono`) antes de inyectar botones y sincronizar.
 
+### Nota para Santander Chile (tarjeta)
+
+- **URL shell:** `https://mibanco.santander.cl/UI.Web.HB/Private_new/frame/*`. Tampermonkey `@match` no usa el fragmento `#...`; el loader hace match al path del frame y el módulo solo actúa cuando `location.hash` contiene `Saldos_TC/main/bill` (movimientos facturados / vista con columna **Monto** única).
+- **Iframe:** el contenido puede vivir en un iframe; el módulo busca la tabla `table.mat-table` en el documento principal y en iframes accesibles (mismo patrón que BCI).
+- **Fechas:** el sitio a veces deja la celda **Fecha** vacía en filas adicionales del mismo día; el módulo **arrastra** la última fecha `dd/MM/yyyy` válida.
+- **Signo del monto:** si el texto no trae `-`/`+`, se usa una lista de palabras clave en el detalle (p. ej. `PAGO`, `MONTO CANCELADO`) para tratar la fila como abono. Revisa el CSV de diagnóstico la primera vez y ajusta el módulo si aparecen comercios ambiguos.
+- También reconoce la variante con columnas **Monto cargo** / **Monto abono** (misma tabla Material) usando `parseChilePesoToMilli` para cadenas con signo.
+
 ## Publicar en GitHub Pages
 
 Si haces un fork o creas tu propio repo:
@@ -171,12 +184,13 @@ Con eso quedarán disponibles:
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-nacional-facturado.js`
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-internacional.js`
 - `https://<usuario>.github.io/<repo>/scripts/bci/cuenta-corriente.js`
+- `https://<usuario>.github.io/<repo>/scripts/santander/tarjeta-credito-movimientos.js`
 
 Si usas tu propio fork, actualiza las URLs `@require` en el loader.
 
 ## Actualizar lógica pública
 
-1. Cambia archivos en `shared/` o `scripts/itau/`.
+1. Cambia archivos en `shared/`, `scripts/itau/`, `scripts/bci/` o `scripts/santander/`.
 2. Commit y push.
 3. GitHub Pages publica automáticamente la nueva versión.
 4. Tampermonkey actualizará los `@require` según su intervalo de actualización.
@@ -204,6 +218,7 @@ Si necesitas crearla para mantenimiento de selectores:
     (URL del sitio: `.../tarjeta-credito/resumen/deuda/...`; el loader usa `@include` con regex porque el path del portal lleva varios segmentos tras `deuda/`.)
   - **Tarjeta crédito - compras dólares** → `dom examples/itau_creditcard_inter_dom.html`
   - **Tarjeta crédito - estado de cuenta facturado (cuenta nacional)** → `dom examples/itau_creditcard_facturado_nacional.html`
+  - **Santander TC** (referencia DOM): `dom examples/santander_movimientos_tarjeta.html` (cargo/abono), `dom examples/santander_movimientos_tarjeta2.html` (columna Monto única, fechas agrupadas)
 
 ## CSV de diagnóstico
 
@@ -301,6 +316,7 @@ Las tablas del sitio de Itaú tienen distinto comportamiento de paginación:
 | `tarjeta-internacional.js` | Compras en dólares | Sí | No |
 | `tarjeta-nacional-facturado.js` | Estado de cuenta facturado | No | Sí |
 | `scripts/bci/cuenta-corriente.js` | Movimientos cuenta corriente BCI | Sí | No |
+| `scripts/santander/tarjeta-credito-movimientos.js` | Tarjeta Santander (`#/private/Saldos_TC/main/bill`) | Por confirmar en sitio | No |
 
 Cuando una tabla está paginada, el DOM solo muestra una página a la vez. Si se compararan las transacciones de YNAB contra esa vista parcial, las transacciones de otras páginas se marcarían erróneamente como "no aparece en extracto".
 
@@ -310,7 +326,7 @@ El módulo `tarjeta-nacional-facturado` no pasa esta opción porque su tabla mue
 
 ## Notas de mantenimiento
 
-- Si Itaú cambia el DOM, actualiza selectores en los módulos de `scripts/itau/`.
+- Si Itaú cambia el DOM, actualiza selectores en los módulos de `scripts/itau/`. Lo mismo para `scripts/bci/` y `scripts/santander/`.
 - Usa `dom examples/` como referencia para ajustar selectores.
 - **Itaú TC nacional (no facturada):** la ruta vive bajo `tarjeta-credito/resumen/deuda/` (no solo `compras-pesos`). La botonera comparte el patrón de cuenta corriente (`#divBotones #desktop-botones .d-flex.flex-row` y `#divBotones .dropdown-menu`), no `#contenedorULBotones`.
 
