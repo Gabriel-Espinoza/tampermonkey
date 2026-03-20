@@ -82,6 +82,14 @@
         .toLowerCase();
     }
 
+    /** Detalle normalizado que el banco lista pero no es un movimiento (omitir CSV / YNAB). */
+    var EXTRACT_IGNORED_DETAIL_NORMALIZED = ['saldo inicial'];
+
+    function isExtractIgnoredDetail(detail) {
+      var n = normalizeText(detail).replace(/\.+$/g, '').trim();
+      return EXTRACT_IGNORED_DETAIL_NORMALIZED.indexOf(n) !== -1;
+    }
+
     function getDocumentLabel(doc) {
       if (!doc) return 'unknown';
       if (doc === document) return 'top';
@@ -253,6 +261,7 @@
         var detalleEl = row.querySelector('.mat-column-detail');
         var detalle = detalleEl ? String(detalleEl.textContent || '').trim() : '';
         if (!detalle) continue;
+        if (isExtractIgnoredDetail(detalle)) continue;
 
         if (mode === 'cargo-abono') {
           var cargoEl = row.querySelector('.mat-column-amountCharge');
