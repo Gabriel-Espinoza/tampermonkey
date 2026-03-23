@@ -10,7 +10,22 @@
   const YNAB_API_BASE = 'https://api.ynab.com/v1';
   const YNAB_FLAG_DATE_CORRECTED = 'orange';
   const YNAB_FLAG_NOT_IN_BANK = 'red';
+  /** Default appended to YNAB memo when a fuzzy date match updates the transaction (placeholders: {ynabDate}, {bankDate}). */
+  const YNAB_DEFAULT_FUZZY_MEMO_SUFFIX = ' [Sync: fecha YNAB {ynabDate} → extracto {bankDate}]';
   const YNAB_CATEGORY_CACHE = Object.create(null);
+
+  /**
+   * @param {string|null|undefined} template - empty string disables memo append
+   * @param {string} ynabDate
+   * @param {string} bankDate
+   * @returns {string}
+   */
+  function formatFuzzyDateMemoSuffix(template, ynabDate, bankDate) {
+    if (template == null || template === '') return '';
+    return String(template)
+      .replace(/\{ynabDate\}/g, ynabDate)
+      .replace(/\{bankDate\}/g, bankDate);
+  }
 
   function waitForElement(selector, maxAttempts) {
     maxAttempts = maxAttempts == null ? 50 : maxAttempts;
@@ -347,9 +362,10 @@
   /**
    * Run YNAB sync: create missing transactions, mark "only in YNAB" with flag and memo suffix.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion (payee), optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, fuzzyDateDays?, skipMarkAfterDate? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, fuzzyDateMemoSuffix?, skipMarkNotInBank?, fuzzyDateDays?, skipMarkAfterDate? }
    *   skipMarkNotInBank: if true, skip flagging YNAB transactions not found in bank data (use for paginated tables where DOM shows partial data)
    *   fuzzyDateDays: max days offset for fuzzy date matching on manual YNAB entries (default 7, 0 to disable)
+   *   fuzzyDateMemoSuffix: string template appended to YNAB memo on fuzzy date correction; placeholders {ynabDate}, {bankDate}. Omit for default; '' disables memo append (flag orange still applies if no prior flag)
    *   skipMarkAfterDate: if set (YYYY-MM-DD), skip marking YNAB transactions with date > this value (use for facturado where recent transactions aren't billed yet)
    * @returns {Promise<void>} shows alert with result
    */
@@ -358,6 +374,8 @@
     var budgetId = config.budgetId;
     var accountId = config.accountId;
     var memoSuffix = config.memoSuffix != null ? config.memoSuffix : ' [No aparece en extracto Itaú]';
+    var fuzzyMemoTpl = config.fuzzyDateMemoSuffix;
+    if (fuzzyMemoTpl === undefined) fuzzyMemoTpl = YNAB_DEFAULT_FUZZY_MEMO_SUFFIX;
 
     if (String(accessToken).indexOf('insert') !== -1 || String(budgetId).indexOf('insert') !== -1 || String(accountId).indexOf('insert') !== -1) {
       alert('Configura YNAB_ACCESS_TOKEN, YNAB_BUDGET_ID y YNAB_ACCOUNT_ID al inicio del script.');
@@ -449,7 +467,13 @@
               if (best) {
                 matchedYnabIds.add(best.id);
                 exactMatched.add(mi);
-                fuzzyUpdates.push({ id: best.id, newDate: m.dateNorm, existingFlag: best.flag_color || null });
+                fuzzyUpdates.push({
+                  id: best.id,
+                  newDate: m.dateNorm,
+                  existingFlag: best.flag_color || null,
+                  existingMemo: best.memo || '',
+                  ynabDate: best.date
+                });
               }
             }
           }
@@ -516,6 +540,8 @@
         fuzzyUpdates.forEach(function (u) {
           var patch = { id: u.id, date: u.newDate };
           if (!u.existingFlag) patch.flag_color = YNAB_FLAG_DATE_CORRECTED;
+          var fuzzyMemoAdd = formatFuzzyDateMemoSuffix(fuzzyMemoTpl, u.ynabDate, u.newDate);
+          if (fuzzyMemoAdd) patch.memo = u.existingMemo + fuzzyMemoAdd;
           patch._type = 'fuzzy';
           patchPayload.push(patch);
         });
@@ -578,10 +604,11 @@
    * Build CSV-ready preview rows reflecting what a YNAB sync would do.
    * Calls the YNAB API to compare bank movements against existing transactions.
    * @param {Array<Object>} movimientos - must have dateNorm, amountMilli, import_id, movimientos or descripcion, optional memo
-   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, skipMarkNotInBank?, skipReconciled?, fuzzyDateDays?, skipMarkAfterDate? }
+   * @param {Object} config - { accessToken, budgetId, accountId, memoSuffix?, fuzzyDateMemoSuffix?, skipMarkNotInBank?, skipReconciled?, fuzzyDateDays?, skipMarkAfterDate? }
    *   skipMarkNotInBank: if true, omit "marcar" rows from preview (use for paginated tables)
    *   skipReconciled: if true, ignore reconciled YNAB transactions when building "marcar" rows
    *   fuzzyDateDays: max days offset for fuzzy date matching on manual YNAB entries (default 7, 0 to disable)
+   *   fuzzyDateMemoSuffix: same as runSyncYNAB (default memo text for fuzzy corrections in preview)
    *   skipMarkAfterDate: if set (YYYY-MM-DD), skip marking YNAB transactions with date > this value (use for facturado where recent transactions aren't billed yet)
    * @returns {Promise<{rows: Array<Object>, error: string|null}>}
    */
@@ -590,6 +617,8 @@
     var budgetId = config.budgetId;
     var accountId = config.accountId;
     var memoSuffix = config.memoSuffix != null ? config.memoSuffix : ' [No aparece en extracto Itaú]';
+    var fuzzyMemoTplPreview = config.fuzzyDateMemoSuffix;
+    if (fuzzyMemoTplPreview === undefined) fuzzyMemoTplPreview = YNAB_DEFAULT_FUZZY_MEMO_SUFFIX;
 
     if (String(accessToken).indexOf('insert') !== -1 || String(budgetId).indexOf('insert') !== -1 || String(accountId).indexOf('insert') !== -1) {
       return Promise.resolve({ rows: [], error: 'Configura YNAB_ACCESS_TOKEN, YNAB_BUDGET_ID y YNAB_ACCOUNT_ID al inicio del script.' });
@@ -686,11 +715,15 @@
           var rowFlagColor = matched
             ? (matched.flag_color || (fuzzyMatched ? 'orange' : ''))
             : '';
+          var rowMemo = m.memo || '';
+          if (fuzzyMatched && matched) {
+            rowMemo = (matched.memo || '') + formatFuzzyDateMemoSuffix(fuzzyMemoTplPreview, matched.date, m.dateNorm);
+          }
           rows.push({
             fecha: m.dateNorm,
             payee: payee,
             monto: m.amountMilli,
-            memo: m.memo || '',
+            memo: rowMemo,
             import_id: m.import_id,
             categoria_inferida: inferredCategory || '',
             accion: accion,

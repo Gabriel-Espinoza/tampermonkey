@@ -25,7 +25,8 @@ tampermonkey/
 │   └── bci/
 │       └── cuenta-corriente.js        # BCI movimientos (contenido.jsf)
 │   └── santander/
-│       └── tarjeta-credito-movimientos.js   # Santander TC (hash #/private/Saldos_TC/main/bill)
+│       ├── tarjeta-credito-movimientos.js   # Santander TC (hash #/private/Saldos_TC/main/bill)
+│       └── cuenta-corriente-movimientos.js  # Santander CC (hash #/private/saldos/main/movimientos)
 ├── loaders/                           # Privado/local (ignorado por git)
 │   └── unified.loader.user.js        # Loader unificado (template)
 └── dom examples/                      # Ignorado por git (ver abajo)
@@ -105,7 +106,8 @@ const CONFIG = {
       bci_caro: '<insert account id here>'
     },
     santander: {
-      nacional: '<insert santander nacional YNAB account id>'
+      nacional: '<insert santander nacional YNAB account id>',
+      cc:       '<insert santander cuenta corriente YNAB account id>'
     }
   }
 };
@@ -157,16 +159,17 @@ accounts: {
 BCI usa una ruta contenedora genérica (`https://www.bci.cl/cl/bci/aplicaciones/contenido.jsf*`) y además carga la vista de movimientos dentro de un iframe cuya URL puede pasar por `https://www.bci.cl/svcRest/infraestructura/seguridad/servlet/TokenAutorizacion*` antes de resolver a `https://personas.bci.cl/nuevaWeb/fe-saldosultimosmovpersonas/*`.  
 Por eso el loader hace match en las tres URLs, y el módulo `scripts/bci/cuenta-corriente.js` además valida en runtime la firma de la tabla (`Fecha`, `Descripcion`, `Cargo`, `Abono`) antes de inyectar botones y sincronizar.
 
-### Nota para Santander Chile (tarjeta)
+### Nota para Santander Chile (tarjeta y cuenta corriente)
 
-- **URL shell:** `https://mibanco.santander.cl/UI.Web.HB/Private_new/frame/*`. Tampermonkey `@match` no usa el fragmento `#...`; el loader hace match al path del frame y el módulo solo actúa cuando `location.hash` contiene `Saldos_TC/main/bill` (movimientos facturados / vista con columna **Monto** única).
-- **Iframe:** el contenido puede vivir en un iframe; el módulo busca la tabla `table.mat-table` en el documento principal y en iframes accesibles (mismo patrón que BCI).
-- **Carga asíncrona:** si la tabla tarda o el iframe se monta después, el módulo sigue intentando con `MutationObserver`, listeners `load` en iframes y un **polling** cada 2 s mientras estés en la vista bill (consola: `[Santander TC]`). Si el iframe fuera de otro origen, el top no puede leer su DOM.
-- **Fechas:** el sitio a veces deja la celda **Fecha** vacía en filas adicionales del mismo día; el módulo **arrastra** la última fecha `dd/MM/yyyy` válida.
-- **Saldo inicial:** la fila con detalle **SALDO INICIAL** no es un movimiento; se excluye del CSV y de la sync YNAB (`EXTRACT_IGNORED_DETAIL_NORMALIZED` en el módulo).
-- **Signo del monto:** si el texto no trae `-`/`+`, se usa una lista de palabras clave en el detalle (p. ej. `PAGO`, `MONTO CANCELADO`) para tratar la fila como abono. Revisa el CSV de diagnóstico la primera vez y ajusta el módulo si aparecen comercios ambiguos.
-- También reconoce la variante con columnas **Monto cargo** / **Monto abono** (misma tabla Material) usando `parseChilePesoToMilli` para cadenas con signo.
-- **Cuotas sin marca en el DOM:** Santander no expone columna tipo Itaú (`01/12`). Si un **cargo** tiene fecha **al menos ~50 días** anterior a la **fecha más reciente** de la tabla (p. ej. MAC ONLINE con compra vieja en un extracto de febrero 2026), el script asume cuota: ajusta la fecha YNAB al **día 1 del mes** de esa fecha máxima y añade memo `[Santander: compra DD/MM/YYYY, cuota estim.]`. Se excluyen heurísticamente filas tipo saldo inicial / intereses / comisión. Ajusta `CUOTA_MIN_DAY_GAP` en el módulo si en tu caso hay falsos positivos.
+- **URL shell:** `https://mibanco.santander.cl/UI.Web.HB/Private_new/frame/*`. Tampermonkey `@match` no usa el fragmento `#...`. El loader, al detectar ese path, inicializa **dos** módulos: tarjeta (`SantanderTarjetaCredito`) y cuenta corriente (`SantanderCuentaCorrienteMovimientos`). Cada uno solo inyecta UI cuando `location.hash` coincide con su vista (navegación SPA sin recargar la página).
+- **Tarjeta:** hash `#/private/Saldos_TC/main/bill` — módulo `tarjeta-credito-movimientos.js` (movimientos facturados; columna **Monto** única o **Monto cargo** / **Monto abono**).
+- **Cuenta corriente:** hash `#/private/saldos/main/movimientos` — módulo `cuenta-corriente-movimientos.js`. La tabla incluye columna **Saldo** (firma DOM); en desktop las fechas suelen venir como **DD/MM** sin año; el script completa el año con heurística acorde al listado (~últimos 40 días, orden más reciente primero). Consola: `[Santander CC]`.
+- **Iframe:** el contenido puede vivir en un iframe; ambos módulos buscan `table.mat-table` en el documento principal y en iframes accesibles (mismo patrón que BCI).
+- **Carga asíncrona:** si la tabla tarda o el iframe se monta después, cada módulo sigue intentando con `MutationObserver`, listeners `load` en iframes y **polling** cada 2 s mientras el hash corresponda a su vista. Si el iframe fuera de otro origen, el top no puede leer su DOM.
+- **Fechas (tarjeta):** el sitio a veces deja la celda **Fecha** vacía en filas adicionales del mismo día; el módulo TC **arrastra** la última fecha `dd/MM/yyyy` válida.
+- **Saldo inicial / signos / cargo-abono:** ambos módulos excluyen detalle **SALDO INICIAL** y usan palabras clave en el detalle y `parseChilePesoToMilli` donde aplica; revisa el CSV la primera vez.
+- **Cuotas (solo tarjeta):** Santander no expone columna tipo Itaú (`01/12`). Si un **cargo** tiene fecha **al menos ~50 días** anterior a la **fecha más reciente** de la tabla, el módulo TC asume cuota y ajusta la fecha YNAB (ver `CUOTA_MIN_DAY_GAP` en `tarjeta-credito-movimientos.js`). El módulo de cuenta corriente **no** aplica esta heurística.
+- **Referencia DOM cuenta corriente:** `dom examples/santander_movimientos_cuentacorriente.html`.
 
 ## Publicar en GitHub Pages
 
@@ -188,6 +191,7 @@ Con eso quedarán disponibles:
 - `https://<usuario>.github.io/<repo>/scripts/itau/tarjeta-internacional.js`
 - `https://<usuario>.github.io/<repo>/scripts/bci/cuenta-corriente.js`
 - `https://<usuario>.github.io/<repo>/scripts/santander/tarjeta-credito-movimientos.js`
+- `https://<usuario>.github.io/<repo>/scripts/santander/cuenta-corriente-movimientos.js`
 
 Si usas tu propio fork, actualiza las URLs `@require` en el loader.
 
@@ -234,18 +238,19 @@ El botón "Descargar CSV" genera un archivo orientado a diagnosticar la sincroni
 | `fecha`      | Fecha normalizada YYYY-MM-DD                                                                        |
 | `payee`      | Nombre del beneficiario (lo que se envía como `payee_name` a YNAB)                                  |
 | `monto`      | Monto en miliunidades (formato YNAB: entero, negativo para egresos)                                 |
-| `memo`       | Memo que se enviaría (ej. `cuota 02/3`, `USD a 950`)                                                |
+| `memo`       | Memo que se enviaría; en filas **corregir fecha** (match difuso) refleja el memo YNAB existente más el sufijo de corrección (ver abajo) |
 | `import_id`  | Llave de deduplicación YNAB (ej. `YNAB:-150000:2026-02-15:1`)                                      |
 | `categoria_inferida` | Categoría inferida por reglas de payee (vacío si no hay match o la transacción no se categoriza automáticamente) |
 | `accion`     | Qué haría el sync: `crear` (nueva), `ya existe` (se saltaría), `marcar` (solo en YNAB, se flaggea) |
-| `flag_color` | Color de flag actual en YNAB (vacío si no tiene; ej. `orange` si ya fue marcada)                    |
-| `marcar`     | Vacío para transacciones del banco; para las que están solo en YNAB: `[No aparece en extracto Itaú]`|
+| `flag_color` | Color de flag actual en YNAB (vacío si no tiene); en preview, `orange`/`red` según el caso descrito abajo |
+| `marcar`     | Vacío salvo filas **marcar** (solo YNAB): texto del sufijo de memo (p. ej. extracto Itaú), configurable vía `memoSuffix` en el script |
 
 **Tipos de filas:**
 
 1. **`crear`** — Transacción del banco que no existe en YNAB. Se crearía al sincronizar.
 2. **`ya existe`** — Transacción del banco que ya está en YNAB (match por `import_id`, o por `fecha:monto` para transacciones ingresadas manualmente). Se saltaría.
-3. **`marcar`** — Transacción que existe en YNAB pero no aparece en el extracto bancario. Se marcaría con flag naranja y memo suffix. Solo aplica en tablas no paginadas (ver sección siguiente).
+3. **`corregir fecha (YNAB: …)`** — Mismo monto que una transacción manual en YNAB pero fecha distinta dentro de la ventana difusa (`fuzzyDateDays`, por defecto 7). Al sincronizar, YNAB pasa a la fecha del extracto, flag **naranja** si la transacción no tenía flag, y por defecto se **añade al memo** un sufijo (YNAB no permite texto en el propio flag). Plantilla por defecto: ` [Sync: fecha YNAB {ynabDate} → extracto {bankDate}]`. Puedes pasar `fuzzyDateMemoSuffix` en la config del sync (`shared/lib.js`): misma plantilla con esos placeholders, o `''` para no modificar el memo.
+4. **`marcar`** — Transacción que existe en YNAB pero no aparece en el extracto bancario. Se marcaría con flag **rojo** y sufijo de memo (`memoSuffix`). Solo aplica en tablas no paginadas (ver sección siguiente).
 
 > La descarga del CSV requiere credenciales YNAB configuradas (llama a la API para comparar). Si la tarjeta internacional está involucrada, también pedirá la tasa de conversión USD → CLP.
 
@@ -320,6 +325,7 @@ Las tablas del sitio de Itaú tienen distinto comportamiento de paginación:
 | `tarjeta-nacional-facturado.js` | Estado de cuenta facturado | No | Sí |
 | `scripts/bci/cuenta-corriente.js` | Movimientos cuenta corriente BCI | Sí | No |
 | `scripts/santander/tarjeta-credito-movimientos.js` | Tarjeta Santander (`#/private/Saldos_TC/main/bill`) | Por confirmar en sitio | No |
+| `scripts/santander/cuenta-corriente-movimientos.js` | Cuenta corriente Santander (`#/private/saldos/main/movimientos`) | Por confirmar en sitio | No |
 
 Cuando una tabla está paginada, el DOM solo muestra una página a la vez. Si se compararan las transacciones de YNAB contra esa vista parcial, las transacciones de otras páginas se marcarían erróneamente como "no aparece en extracto".
 

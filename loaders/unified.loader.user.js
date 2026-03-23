@@ -22,6 +22,7 @@
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/itau/tarjeta-internacional.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/bci/cuenta-corriente.js
 // @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/santander/tarjeta-credito-movimientos.js
+// @require      https://gabriel-espinoza.github.io/tampermonkey/scripts/santander/cuenta-corriente-movimientos.js
 // ==/UserScript==
 
 (function () {
@@ -40,7 +41,8 @@
         bci_caro: '<insert account id here>'
       },
       santander: {
-        nacional: '<insert santander nacional YNAB account id>'
+        nacional: '<insert santander nacional YNAB account id>',
+        cc:       '<insert santander cuenta corriente YNAB account id>'
       }
     }
   };
@@ -53,10 +55,10 @@
     { pattern: /compras-en-dolares/,       module: 'ItauTarjetaInternacional',      bank: 'itau', account: 'internacional' },
     { pattern: /bci\.cl\/cl\/bci\/aplicaciones\/contenido\.jsf/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
     { pattern: /bci\.cl\/svcRest\/infraestructura\/seguridad\/servlet\/TokenAutorizacion/, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
-    { pattern: /personas\.bci\.cl\/nuevaWeb\/fe-saldosultimosmovpersonas\//, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' },
-    { pattern: /mibanco\.santander\.cl\/UI\.Web\.HB\/Private_new\/frame\//, module: 'SantanderTarjetaCredito', bank: 'santander', account: 'nacional' }
+    { pattern: /personas\.bci\.cl\/nuevaWeb\/fe-saldosultimosmovpersonas\//, module: 'BciCuentaCorriente', bank: 'bci', account: 'bci_caro' }
   ];
 
+  var SANTANDER_FRAME_RE = /mibanco\.santander\.cl\/UI\.Web\.HB\/Private_new\/frame\//;
   var url = window.location.href;
   for (var i = 0; i < ROUTES.length; i++) {
     var route = ROUTES[i];
@@ -67,6 +69,23 @@
         accountId:   CONFIG.accounts[route.bank][route.account]
       });
       break;
+    }
+  }
+
+  if (SANTANDER_FRAME_RE.test(url)) {
+    var base = {
+      accessToken: CONFIG.accessToken,
+      budgetId:    CONFIG.budgetId
+    };
+    if (window.SantanderTarjetaCredito) {
+      window.SantanderTarjetaCredito.init(
+        Object.assign({}, base, { accountId: CONFIG.accounts.santander.nacional })
+      );
+    }
+    if (window.SantanderCuentaCorrienteMovimientos) {
+      window.SantanderCuentaCorrienteMovimientos.init(
+        Object.assign({}, base, { accountId: CONFIG.accounts.santander.cc })
+      );
     }
   }
 })();
