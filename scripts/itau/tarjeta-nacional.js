@@ -163,6 +163,15 @@
         linkName: 'botonCSV',
         linkClass: 'dropdown-item',
         linkHtml: '<div class="boton-tabla d-flex flex-row justify-content-between"><i class="icon-itaufonts_full_excel sizeXS"></i><p>Descargar CSV</p></div>'
+      },
+      {
+        selector: '#contenedorULBotones',
+        dataId: 'itau-tn-csv',
+        wrapTag: 'li',
+        wrapName: 'contenedorCSV',
+        linkName: 'botonCSV',
+        linkClass: 'boton-barra wpfBlueButton',
+        linkHtml: 'Descargar CSV'
       }
     ];
     var ynabContainers = [
@@ -181,6 +190,15 @@
         linkName: 'botonYNAB',
         linkClass: 'dropdown-item',
         linkHtml: '<div class="boton-tabla d-flex flex-row justify-content-between"><i class="icon-itaufonts_full_excel sizeXS"></i><p>Sincronizar con YNAB</p></div>'
+      },
+      {
+        selector: '#contenedorULBotones',
+        dataId: 'itau-tn-ynab',
+        wrapTag: 'li',
+        wrapName: 'contenedorYNAB',
+        linkName: 'botonYNAB',
+        linkClass: 'boton-barra wpfBlueButton',
+        linkHtml: 'Sincronizar con YNAB'
       }
     ];
 
